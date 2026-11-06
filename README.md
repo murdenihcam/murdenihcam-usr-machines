@@ -19,8 +19,6 @@ To install my *ROM and E12* machines or the ROM-only versions, you’ll need a M
 4. Using Sysex Librarian, play the .syx file(s) to the MD. You can select multiple .syx and play all at once; the machine bank will populate empty slots automatically. this is usually a very quick transfer as these are small files. The machine will then install. 
 5. When you go to KIT-->EDIT, you may now see new machine categor(ies) corresponding to the new machine and you're good to go. Notably several of the ones from MDX will be found in existing categories like NFX and P-I. We’re limited to 16 slots but with a + drive you can have multiple Machine Banks. 
 
-**NOTE:** One current bug to be aware of with all USR machines that I encountered is that if you have a kit loaded that uses USR machines and you install new machines, those that were in your current pattern might start sounding glitchy. This is temporary and is quickly resolved by reloading the kit or power cycling.
-
 # **machine descriptions:**
 
 1. SMP-SL[ICE] 
