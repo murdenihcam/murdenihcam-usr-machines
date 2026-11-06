@@ -2,8 +2,8 @@
 
 
 This is a repository containing all of the USR machines that I have released for the [MDX X20 firmware](https://github.com/jmamma/MDX). 
-- Website: [murdenihcam.github.io/murdenihcam-usr-machines](https://murdenihcam.github.io/murdenihcam-usr-machines/) (all machines with screens, parameter notes, demos and downloads)
-- Discussion thread here: [Custom USR Machines for X.20](https://www.elektronauts.com/t/custom-usr-machines-for-x-20/257233). 
+- Project website: [murdenihcam.github.io/murdenihcam-usr-machines](https://murdenihcam.github.io/murdenihcam-usr-machines/) (all machines with screens, parameter notes, demos and downloads)
+- Discussion thread: [Custom USR Machines for X.20](https://www.elektronauts.com/t/custom-usr-machines-for-x-20/257233). 
 - Here's an MD/MnM community discord that I use to discuss this (see diy-machines) https://discord.gg/HNtQsSmkf
 ---
 
