@@ -1,0 +1,650 @@
+; RAM-GR "RAM GRANULAR": SMP-GR's knobs on live audio. The main output (mono, as
+; RAM-R records it) is
+; recorded all the time into a RAM slot's memory, lent by RAM_WORKSPACE (slot
+; hunting and clearing: ram_ring.inc, shared with RAM-ST). The ring is used as
+; two halves: the recorder writes one; a TRIG freezes all of it (the
+; window) and the recorder moves to the other half, so every trig freezes fresh
+; audio while the frozen window stays untouched. Up to 3 grains (triangle
+; windows, nearest-sample reads) play inside the window around a playhead
+; that starts at SEEK and moves with SCAN (64 = still). SCAN 0 (LIVE) never
+; freezes: grains read behind the recorder, a granular delay. MODE HOLD:
+; recording stops.
+; A retrig repeat (TRIGGER_INFO bit 16) restarts the sound on the same window.
+;
+; Parameters, Y:(r6+1..8):
+;   1 PTCH  raw14 bipolar  (setting - 64) / 2 semitones: -32..+32
+;   2 MODE  boolean        0 REC (records all the time), 1 HOLD (recording stops, the buffer stays)
+;   3 DEC   raw14          decay, 60 dB in 0.03..30 s; 127 = no decay
+;   4 DENS  raw14          grain overlap 0.5..3 (at most 3 grains)
+;   5 SEEK  unipolar Q23   playhead start in the window (LIVE: distance behind the recorder)
+;   6 SCAN  raw14 bipolar  playhead speed through the window, -2..+2, 64 = still;
+;                          0 = LIVE: no freeze, grains read behind the recorder
+;   7 GRAN  squared Q23    grain length 128 + 64 * floor(78 * s) samples (3..116 ms)
+;   8 SPRY  unipolar Q23   random position (up to half the window) and reverse chance (up to 1/2)
+;
+; Y state: 9 slot  10 ring base  11 ring mask  12 words cleared  13 CAP (unused)
+; 14 writing half  15 write offset in it  16 its FILL  17 frozen half's base
+; 18 window's first frame  19 window length  20 playing  21 envelope  22 gain
+; 23 random seed  24 scan offset (1/128 frames)  25 spawn countdown  26 LIVE
+; 27..36 scratch. Grains at 37, 46, 55: 9 words each.
+
+P_PTCH  equ 1
+P_MODE  equ 2
+P_DEC   equ 3
+P_DENS  equ 4
+P_SEEK  equ 5
+P_SCAN  equ 6
+P_GRAN  equ 7
+P_SPRY  equ 8
+S_SLOT  equ 9
+S_RB    equ 10
+S_RM    equ 11
+S_CLR   equ 12
+S_CAP   equ 13
+S_HW    equ 14
+S_WH    equ 15
+S_FILL  equ 16
+S_FB    equ 17
+S_WOFF  equ 18
+S_L     equ 19
+S_ACT   equ 20
+S_ENV   equ 21
+S_GAIN  equ 22
+S_SEED  equ 23
+S_S128  equ 24
+S_CNT   equ 25
+S_LIVE  equ 26
+T_HB    equ 27
+T_HM    equ 28
+T_RI    equ 29
+T_RF    equ 30
+T_LEN   equ 31
+T_M     equ 32
+T_J     equ 33
+T_F     equ 34
+T_OCT   equ 35
+T_HCAP  equ 36
+G_BASE  equ 37
+G_SIZE  equ 9
+; grain record words
+G_BL    equ 0                   ; blocks left (0 = free)
+G_PI    equ 1                   ; position, 24.24 half-ring frames
+G_PF    equ 2
+G_RI    equ 3                   ; rate, 24.24 (negative = reverse)
+G_RF    equ 4
+G_ENV   equ 5                   ; triangle level
+G_ES    equ 6                   ; its step per sample
+G_HB    equ 7                   ; blocks until the triangle turns
+G_RB    equ 8                   ; base of the half it reads
+
+MIN_WIN equ 256                 ; shortest window in frames
+ENV_OFF equ $000040             ; envelope level treated as silent (about -100 dB)
+SEED0   equ $2a5b3d             ; random seed of track 0
+RING_MAX equ $40000             ; ring sizes for ram_ring.inc
+RING_MIN equ $4000
+CHUNK   equ 256
+MARGIN  equ 2048                ; frames of a half kept clear of the recorder
+
+        section RAM_GRAN
+RENDER:
+        movec   #>$ffffff,m6
+        include 'ram_ring.inc'
+RING_READY:
+        ; ---- the halves: mask, size - MARGIN, the writing half's base ----
+        move    y:(r6+S_RM),a
+        asr     a
+        move    a1,y:(r6+T_HM)
+        add     #1,a
+        move    a1,x1           ; half size
+        move    #>MARGIN,x0
+        sub     x0,a
+        move    a1,y:(r6+T_HCAP)
+        move    y:(r6+S_RB),a
+        move    y:(r6+S_HW),b
+        tst     b
+        beq     R_HB
+        add     x1,a
+R_HB:
+        move    a1,y:(r6+T_HB)
+        move    y:(r6+P_MODE),a ; HOLD: no recording, the buffer stays
+        tst     a
+        bne     R_HOLD
+        ; ---- capture the main output, mono, into the writing half ----
+MAIN_POS:
+        move    x:>$000000,a    ; kind 1 / main-output position: this block's 32 pairs
+MAIN_RING:
+        move    #>$000000,x0    ; kind 1 / the 256-word main-output ring
+        sub     x0,a            ; the block's offset in the ring (as MAIN REC)
+        and     #>$ff,a
+        add     x0,a
+        move    a1,r5
+        move    y:(r6+T_HB),a ; the write offset steps by 32 in a half of 2^n >= 2^13:
+        move    y:(r6+S_WH),x0  ; a block never wraps
+        add     x0,a
+        move    a1,r1
+        dor     #32,CAP_END
+        move    x:(r5)+,a       ; (left + right) / 2
+        move    x:(r5)+,x0
+        add     x0,a
+        asr     a
+        move    a,y:(r1)+
+CAP_END:
+        move    y:(r6+S_WH),a
+        move    #>32,x0
+        add     x0,a
+        move    y:(r6+T_HM),x1
+        and     x1,a
+        move    a1,y:(r6+S_WH)
+        move    y:(r6+T_HCAP),x1
+        move    #>32,x0
+        move    y:(r6+S_FILL),a
+        add     x0,a
+        cmp     x1,a
+        tfr     x1,a    ifgt
+        move    a1,y:(r6+S_FILL)
+R_HOLD:
+
+        move    y:(r6+S_ACT),a
+        tst     a
+        beq     SILENCE
+ACC_X:
+        move    #>$000000,r0    ; kind 3 / TEMP_X: the grains add into it
+        clr     a
+        rep     #32
+        move    a,x:(r0)+
+        bsr     TBASE
+
+        ; ---- grain rate 2^(PTCH/12): 24.24 and Q4.20 ----
+        move    y:(r6+P_PTCH),a
+        move    #>8192,x0       ; setting 64 = no shift
+        sub     x0,a
+        asr     a               ; half a semitone per setting step
+        move    #>4095,x0
+        cmp     x0,a
+        tfr     x0,a    ifgt
+        move    #>$fff000,x0    ; -4096
+        cmp     x0,a
+        tfr     x0,a    iflt
+        tfr     a,b
+        asr     #7,b,b          ; whole semitones s, -32..31
+        and     #>$7f,a         ; 1/128-semitone steps ...
+        lsl     #16,a           ; ... as a Q23 fraction
+        move    a1,y:(r6+T_F)
+        move    #>72,x0
+        add     x0,b            ; t = s + 72, 8..135
+        move    b1,x1
+        move    #>$0aaaab,y0    ; 1/12, rounded up
+        mpy     x1,y0,a         ; A1 = t / 12, the octave + 6
+        move    a1,y:(r6+T_OCT)
+        move    a1,a
+        asl     #2,a,a
+        move    a1,y1
+        asl     #1,a,a
+        add     y1,a            ; 12 * octave
+        move    x1,b
+        sub     a,b             ; semitone within the octave, 0..11
+        move    b1,n4
+        lua     (r4)+n4,r0
+        movem   p:(r0)+,x0      ; 2^(n/12)/4
+        movem   p:(r0),x1       ; one semitone higher
+        move    x1,b
+        sub     x0,b
+        move    b1,y1
+        move    y:(r6+T_F),y0
+        mpy     y0,y1,b
+        add     x0,b
+        move    #>$010000,x0    ; native step 1.0 (Q16.16)
+        move    b1,y0
+        mpy     x0,y0,a         ; A1:A0 = 2^(n/12) / 4 * 2^40
+        move    y:(r6+T_OCT),x0
+        move    #>20,b
+        sub     x0,b
+        move    b1,x0
+        asr     x0,a,a          ; 24.24 frames/sample
+        move    a1,y:(r6+T_RI)
+        move    a0,y:(r6+T_RF)
+        asl     #20,a,a
+        move    a1,y:(r6+T_F)   ; Q4.20 (T_F is free again)
+
+        ; ---- grain length 64 m samples, m = 2 + floor(78 * GRAN); J = frames it reads ----
+        move    y:(r6+P_GRAN),y0
+        move    #>78,x0
+        mpy     x0,y0,a
+        add     #2,a
+        move    a1,y:(r6+T_M)
+        asl     #6,a,a
+        move    a1,y:(r6+T_LEN)
+        move    a1,x0
+        move    y:(r6+T_F),y0
+        mpy     x0,y0,a         ; A1 = length * rate / 8
+        asl     #3,a,a
+        move    a1,y:(r6+T_J)
+
+        ; ---- playhead scan: S128 += SCAN - 64 (1/128 frames per block), wrapped ----
+        move    y:(r6+S_L),a
+        asl     #7,a,a
+        move    a1,x1           ; 128 L
+        move    y:(r6+P_SCAN),b
+        move    #>8192,x0
+        sub     x0,b
+        move    y:(r6+S_S128),x0
+        add     x0,b
+        cmp     x1,b
+        blt     R_SC_HI
+        sub     x1,b
+R_SC_HI:
+        tst     b
+        bge     R_SC_LO
+        add     x1,b
+R_SC_LO:
+        move    b1,y:(r6+S_S128)
+
+        ; ---- spawn a grain every length / overlap samples, if one is free ----
+        move    y:(r6+S_CNT),a
+        move    #>32,x0
+        sub     x0,a
+        move    a1,y:(r6+S_CNT)
+        tst     a
+        bgt     R_GRAINS
+        move    r6,r3
+        move    #G_BASE,n3
+        nop
+        lua     (r3)+n3,r3
+        move    #G_SIZE,n3
+        move    #>3,x1
+R_FREE:
+        move    y:(r3+G_BL),a
+        tst     a
+        beq     R_SPAWN
+        lua     (r3)+n3,r3
+        move    x1,a
+        sub     #1,a
+        move    a1,x1
+        tst     a
+        bne     R_FREE
+        clr     a               ; none free: try again next block
+        move    a,y:(r6+S_CNT)
+        bra     R_GRAINS
+R_SPAWN:
+        bsr     SPAWN
+        move    y:(r6+P_DENS),a ; countdown += 2 * length * IVL[DENS]
+        asr     #7,a,a
+        move    #>TB_IVL,x0
+        add     x0,a
+        move    a1,n4
+        lua     (r4)+n4,r0
+        movem   p:(r0),y0
+        move    y:(r6+T_LEN),x0
+        mpy     x0,y0,a
+        asl     a
+        move    y:(r6+S_CNT),x0
+        add     x0,a
+        move    a1,y:(r6+S_CNT)
+
+R_GRAINS:
+        ; ---- every sounding grain: 32 positions, then 32 reads into the output ----
+        move    r6,r3
+        move    #G_BASE,n3
+        nop
+        lua     (r3)+n3,r3
+        move    #G_SIZE,n3
+        move    #>3,a
+R_GLOOP:
+        move    a1,y:(r6+T_F)
+        move    y:(r3+G_BL),b
+        tst     b
+        beq     R_GNEXT
+        bsr     GRAIN
+R_GNEXT:
+        lua     (r3)+n3,r3
+        move    y:(r6+T_F),a
+        sub     #1,a
+        tst     a
+        bne     R_GLOOP
+
+        ; ---- level: decay envelope, ramped over the block ----
+        move    y:(r6+P_DEC),a
+        asr     #7,a,a
+        move    #>127,x0
+        cmp     x0,a
+        tfr     x0,a    ifgt
+        move    #>TB_DECAY,x0
+        add     x0,a
+        move    a1,n4
+        lua     (r4)+n4,r0
+        movem   p:(r0),y0
+        move    y:(r6+S_ENV),x0
+        mpy     x0,y0,a         ; envelope at the end of this block ...
+        move    #>$7fffff,x1
+        move    y0,b
+        cmp     x1,b
+        tfr     x0,a    ifeq    ; ... held exactly at DEC 127
+        move    #>ENV_OFF,x1
+        cmp     x1,a
+        bge     R_ENV_OK
+        clr     a               ; decayed away: this is the last block
+        move    a,y:(r6+S_ACT)
+R_ENV_OK:
+        move    a1,y:(r6+S_ENV)
+        move    y:(r6+S_GAIN),b
+        move    a1,y:(r6+S_GAIN)
+        sub     b,a
+        asr     #5,a,a
+        move    a1,x1           ; B = gain, X1 = its step per sample
+
+        ; ---- the grains' sum times the gain ramp, to the output ----
+ACC_X3:
+        move    #>$000000,r0    ; kind 3 / TEMP_X
+        dor     #32,R_GAIN_END
+        move    x:(r0)+,x0
+        move    b1,y1
+        mpy     x0,y1,a
+        add     x1,b
+        move    a,y:(r7)+
+R_GAIN_END:
+        rts
+
+; One grain's block, R3 = its record. Uses every register but R3, R4, R6, R7.
+GRAIN:
+POSITIONS:
+        move    #>$000000,r0    ; kind 4 / TEMP_Y
+        move    y:(r6+T_HM),y1
+        move    y:(r3+G_RB),y0
+        move    y:(r3+G_RI),x1
+        move    y:(r3+G_RF),x0
+        move    y:(r3+G_PI),a
+        move    y:(r3+G_PF),a0
+        dor     #32,GP_END
+        tfr     a,b
+        and     y1,b
+        or      y0,b
+        add     x,a     b1,y:(r0)+
+GP_END:
+        move    a1,y:(r3+G_PI)
+        move    a0,y:(r3+G_PF)
+READS:
+        move    #>$000000,r0    ; kind 4 / TEMP_Y
+ACC_X2:
+        move    #>$000000,r5    ; kind 3 / TEMP_X
+        move    y:(r3+G_ENV),b
+        move    y:(r3+G_ES),x1
+        dor     #32,GR_END
+        move    y:(r0)+,r2
+        move    b1,y1
+        move    x:(r5),a
+        move    y:(r2),x0
+        mac     x0,y1,a
+        add     x1,b
+        move    a,x:(r5)+
+GR_END:
+        move    b1,y:(r3+G_ENV)
+        move    y:(r3+G_HB),a   ; the triangle turns half way
+        sub     #1,a
+        move    a1,y:(r3+G_HB)
+        bne     GR_TURNED
+        move    y:(r3+G_ES),a
+        neg     a
+        move    a1,y:(r3+G_ES)
+GR_TURNED:
+        move    y:(r3+G_BL),a
+        sub     #1,a
+        move    a1,y:(r3+G_BL)
+        rts
+
+; Start the grain at R3.
+SPAWN:
+        move    y:(r6+T_M),a    ; 2m blocks, turning after m
+        move    a1,y:(r3+G_HB)
+        asl     a
+        move    a1,y:(r3+G_BL)
+        clr     a
+        move    a,y:(r3+G_ENV)
+        move    a,y:(r3+G_PF)
+        move    y:(r6+P_DENS),a ; step = AMP[DENS] / (32 m)
+        asr     #7,a,a
+        move    #>TB_AMP,x0
+        add     x0,a
+        move    a1,n4
+        lua     (r4)+n4,r0
+        movem   p:(r0),x0
+        move    y:(r6+T_M),a
+        move    #>TB_RECIP,y0
+        add     y0,a
+        move    a1,n4
+        lua     (r4)+n4,r0
+        movem   p:(r0),y0
+        mpy     x0,y0,a
+        move    a1,y:(r3+G_ES)
+        bsr     RAND            ; jitter U * SPRY
+        move    a1,x0
+        move    y:(r6+P_SPRY),y0
+        mpy     x0,y0,a
+        move    a1,y:(r6+T_OCT)
+        move    y:(r6+S_LIVE),a
+        tst     a
+        bne     SP_LIVE
+        ; ---- frozen: centre P - J/2 + jitter * L/2, kept inside 0..L-J ----
+        move    y:(r6+S_FB),x0
+        move    x0,y:(r3+G_RB)
+        move    y:(r6+S_L),x0
+        move    y:(r6+P_SEEK),y0
+        mpy     x0,y0,b         ; SEEK * L
+        move    y:(r6+S_S128),a
+        asr     #7,a,a
+        add     a,b
+        cmp     x0,b
+        blt     SP_P
+        sub     x0,b
+SP_P:
+        move    y:(r6+T_J),a
+        asr     a
+        move    a1,x1
+        sub     x1,b            ; P - J / 2
+        move    y:(r6+T_OCT),y0
+        mpy     x0,y0,a         ; jitter * L / 2
+        asr     a
+        add     a,b
+        move    x0,a
+        move    y:(r6+T_J),x1
+        sub     x1,a            ; L - J
+        cmp     a,b
+        tfr     a,b     ifgt
+        tst     b
+        bge     SP_F_OK
+        clr     b
+SP_F_OK:
+        move    y:(r6+S_WOFF),x0
+        add     x0,b
+        bra     SP_DIR
+SP_LIVE:
+        ; ---- LIVE: d = 64 + J + SEEK * HCAP / 2 + |jitter| * HCAP / 4 behind the recorder ----
+        move    y:(r6+T_HB),x0
+        move    x0,y:(r3+G_RB)
+        move    y:(r6+T_HCAP),x0
+        move    y:(r6+P_SEEK),y0
+        mpy     x0,y0,b
+        asr     b
+        move    y:(r6+T_OCT),a
+        abs     a
+        move    a1,y0
+        mpy     x0,y0,a
+        asr     #2,a,a
+        add     a,b
+        move    y:(r6+T_J),x1
+        add     x1,b
+        move    #>64,y1
+        add     y1,b
+        move    x0,a            ; at most HCAP - J
+        sub     x1,a
+        cmp     a,b
+        tfr     a,b     ifgt
+        move    y:(r6+S_WH),a
+        sub     b,a
+        tfr     a,b
+SP_DIR:
+        ; ---- reverse with chance SPRY / 2: start J further on, rate negative ----
+        move    b1,y:(r3+G_PI)
+        move    y:(r6+T_RI),x1
+        move    y:(r6+T_RF),x0
+        move    x1,y:(r3+G_RI)
+        move    x0,y:(r3+G_RF)
+        bsr     RAND
+        abs     a               ; |U'| in 0..1
+        move    y:(r6+P_SPRY),b
+        asr     b
+        cmp     b,a             ; reverse when |U'| < SPRY / 2
+        bge     SP_END
+        move    y:(r3+G_PI),b
+        move    y:(r6+T_J),x0
+        add     x0,b
+        move    b1,y:(r3+G_PI)
+        move    y:(r6+T_RI),a
+        move    y:(r6+T_RF),a0
+        neg     a
+        move    a1,y:(r3+G_RI)
+        move    a0,y:(r3+G_RF)
+SP_END:
+        rts
+
+; A1 = next random value (signed Q23): seed = seed * $19660D + $6EF35F mod 2^24.
+RAND:
+        move    y:(r6+S_SEED),x0
+        move    #>$19660d,y0
+        mpy     x0,y0,a
+        asr     a
+        move    a0,a
+        move    #>$6ef35f,x0
+        add     x0,a
+        move    a1,y:(r6+S_SEED)
+        rts
+
+SILENCE:
+        clr     a
+        rep     #32
+        move    a,y:(r7)+       ; every path writes the whole output block
+        rts
+
+; R4 = the constant tables (linear addressing).
+TBASE:
+TABLE_BASE:
+        move    #>TABLES,r4
+        movec   #>$ffffff,m4
+        rts
+
+; ---- cold code: INIT, TRIG, ring callbacks ----
+INIT:
+        movec   #>$ffffff,m6
+        clr     a
+        move    a,y:(r6+S_RB)
+        move    a,y:(r6+S_RM)
+        move    a,y:(r6+S_GAIN)
+        move    a,y:(r6+S_ENV)
+        bsr     RING_RESET
+        move    r1,a            ; a different random sequence on every track
+        move    #>SEED0,x0
+        add     x0,a
+        move    a1,y:(r6+S_SEED)
+        move    r1,a            ; RAM slot: track number mod 4
+        and     #>3,a
+        move    a1,y:(r6+S_SLOT)
+        rts
+
+TRIG:
+        movec   #>$ffffff,m6
+        move    y:(r6+S_RB),b
+        tst     b
+        beq     TRIG_EMPTY      ; no ring
+TRIG_INFO:
+        move    x:>$000000,a    ; kind 1 / TRIGGER_INFO
+        move    #>$010000,x0
+        and     x0,a
+        beq     TRIG_NEW
+        move    y:(r6+S_ACT),a  ; a repeat: the same window, sound restarted
+        tst     a
+        bne     TRIG_START
+TRIG_NEW:
+        move    y:(r6+P_SCAN),a ; SCAN 0 = LIVE
+        move    #>128,x0
+        cmp     x0,a
+        bge     TRIG_FROZEN
+        move    #>1,b
+        move    b1,y:(r6+S_LIVE)
+        bra     TRIG_START
+TRIG_FROZEN:
+        clr     b
+        move    b1,y:(r6+S_LIVE)
+        move    y:(r6+S_FILL),a ; the whole writing half: its last FILL frames
+        move    y:(r6+P_MODE),b
+        tst     b
+        beq     TRIG_FREEZE
+        ; HOLD: freeze everything recorded before the hold, or keep the window
+        ; when nothing new was recorded since the last freeze
+        move    #>MIN_WIN,x0
+        cmp     x0,a
+        bge     TRIG_FREEZE
+        move    y:(r6+S_L),a
+        tst     a
+        beq     TRIG_EMPTY
+        bra     TRIG_START
+TRIG_FREEZE:
+        move    y:(r6+S_FILL),x0 ; the last min(LEN, FILL) frames of the writing half
+        cmp     x0,a
+        tfr     x0,a    ifgt
+        move    #>MIN_WIN,x0
+        cmp     x0,a
+        blt     TRIG_EMPTY
+        move    a1,y:(r6+S_L)
+        move    a1,x0
+        move    y:(r6+S_WH),a
+        sub     x0,a
+        move    y:(r6+S_RM),b
+        asr     b
+        move    b1,x1           ; half mask
+        and     x1,a
+        move    a1,y:(r6+S_WOFF)
+        move    y:(r6+S_RB),a   ; frozen: the writing half; recording moves to the other
+        move    x1,b
+        add     #1,b
+        move    b1,x1           ; half size
+        move    y:(r6+S_HW),b
+        tst     b
+        beq     TRIG_H0
+        add     x1,a
+TRIG_H0:
+        move    a1,y:(r6+S_FB)
+        move    #>1,a
+        sub     b,a
+        move    a1,y:(r6+S_HW)
+        clr     a
+        move    a,y:(r6+S_WH)
+        move    a,y:(r6+S_FILL)
+TRIG_START:
+        move    #>$7fffff,a
+        move    a,y:(r6+S_ENV)
+        clr     a
+        move    a,y:(r6+S_S128)
+        move    a,y:(r6+S_CNT)
+        move    #>1,a
+        move    a1,y:(r6+S_ACT)
+        rts
+TRIG_EMPTY:
+        clr     a
+        move    a,y:(r6+S_ACT)
+        rts
+
+; ram_ring.inc callbacks: a new or lost ring has no audio, no window and no grains.
+RING_RESET:
+RING_LOST:
+        clr     a
+        move    a,y:(r6+S_HW)
+        move    a,y:(r6+S_WH)
+        move    a,y:(r6+S_FILL)
+        move    a,y:(r6+S_ACT)
+        move    a,y:(r6+S_L)
+        move    a,y:(r6+G_BASE+G_BL)
+        move    a,y:(r6+G_BASE+G_SIZE+G_BL)
+        move    a,y:(r6+G_BASE+2*G_SIZE+G_BL)
+        rts
+
+        include 'tables.inc'
+        endsec

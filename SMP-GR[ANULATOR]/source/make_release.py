@@ -30,6 +30,7 @@ for rel, build, logo in MACHINES:
     d.mkdir(parents=True)
     for ext in ("syx", "mds", "json", "asm56k", "pbm"):
         shutil.copy2(HERE / f"{build}.{ext}", d / f"{rel}.{ext}")
+    shutil.copy2(HERE / f"{build}_cert.json", d / f"{rel}_cert.json")
     shutil.copy2(HERE / logo, d / f"{rel}_logo.png")
     subprocess.run([sys.executable, str(HERE / "png_sprite.py"), str(HERE / logo), "--web",
                     str(d / f"{rel}_web.png")], check=True, capture_output=True)
@@ -46,5 +47,12 @@ for name in SOURCE:
     "Each folder: .syx to send to the Machinedrum, .mds package, .json definition, .asm56k wrapper,\n"
     ".pbm sprite, the 32x24 logo and a web logo (black on #CD2824).\n"
     "source/: shared engine (granular_engine.inc), generated includes and the Python tools.\n"
-    "The builds were made in C:\\work\\granular under the build names above.\n")
+    "The builds were made in C:\\work\\granular under the build names above.\n\n"
+    "MDS 1.1, certified with mds-certifier (mds-tools). All three variants measure the same\n"
+    "cycles per track: MKII 5298, MKI 5962, MKI with the program in SRAM 5255 (worst case at\n"
+    "GRAN 0 with SPRY 127). Each folder holds the certifier report (_cert.json).\n\n"
+    "Tracks of this machine one kit can hold (X.20 / MDX firmware):\n"
+    "  MKII  about 9 tracks\n"
+    "  MKI   about 8 tracks (about 9 when the firmware puts the program in SRAM)\n"
+    "Fewer beside other expensive machines: the firmware refuses a kit over its DSP limit.\n")
 print("wrote", out)

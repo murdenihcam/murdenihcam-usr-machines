@@ -159,7 +159,7 @@ WALK_MAX equ 12                 ; REFINE steps back from the peak at most
         section SLICER
 ; Y0 = A1 / X0 as a Q23 fraction, for 0 <= A1 < X0.
 DIVQ:
-        and     #$fe,ccr
+        add     #0,a            ; clears C for DIV (ANDI on CCR is forbidden by MDS 1.1)
         rep     #24
         div     x0,a
         move    a0,y0

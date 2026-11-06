@@ -6,6 +6,8 @@ A multi-mode modulation effect, covering flanger, chorus, pitch and frequency sh
 
 **NOTE:** switching MODE does a short fade (about 1.5 ms out, 1.5 ms in) instead of jumping, so there’s a brief dip rather than a glitch. No trig is needed. A ringing feedback tail carries over into the new mode, but switching into a short delay (e.g. FLNG with low DLAY) can cut it off.
 
+**TRACKS / CPU (v0.11):** certified with the MDS 1.1 certifier (MDX 2.0C). Measured worst case per track: MKII 4,381 cycles, MKI 5,942 (5,220 with the program in SRAM). All 16 tracks need 3,000 (MKII) / 3,073 (MKI) or less, so with NFX-MO on every track plan on about **10 tracks on an MKII** and **8 on an MKI** (about 9 with the program in SRAM). Lighter machines on the other tracks leave room for more. These counts are estimates from the certified figures; the firmware does the actual budgeting.
+
 **parameters**
 **MODE** - Toggles between 5 modes:
 

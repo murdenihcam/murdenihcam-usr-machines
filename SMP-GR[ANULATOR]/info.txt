@@ -1,4 +1,4 @@
-SMP-GR granular machines, v0.5
+SMP-GR granular machines, v0.6
 
 SMP-GR_allbanks  ROM+E12 GRANULAR  UW ROM 1..48 then E1..E21   (build name: granular)
 SMP-GM_rom       ROM GRANULAR      UW ROM 1..48                (build name: rom_granular)
@@ -8,3 +8,12 @@ Each folder: .syx to send to the Machinedrum, .mds package, .json definition, .a
 .pbm sprite, the 32x24 logo and a web logo (black on #CD2824).
 source/: shared engine (granular_engine.inc), generated includes and the Python tools.
 The builds were made in C:\work\granular under the build names above.
+
+MDS 1.1, certified with mds-certifier (mds-tools). All three variants measure the same
+cycles per track: MKII 5298, MKI 5962, MKI with the program in SRAM 5255 (worst case at
+GRAN 0 with SPRY 127). Each folder holds the certifier report (_cert.json).
+
+Tracks of this machine one kit can hold (X.20 / MDX firmware):
+  MKII  about 9 tracks
+  MKI   about 8 tracks (about 9 when the firmware puts the program in SRAM)
+Fewer beside other expensive machines: the firmware refuses a kit over its DSP limit.

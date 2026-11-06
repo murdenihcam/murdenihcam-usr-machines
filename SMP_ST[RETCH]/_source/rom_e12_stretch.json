@@ -3,7 +3,7 @@
   "display_name": "ROM+E12 STRETCH",
   "category": "SMP",
   "short_label": "ST",
-  "machine_version": "0.6",
+  "machine_version": "0.7",
   "params": [
     {
       "name": "PTCH",
@@ -167,6 +167,6 @@
       }
     ]
   },
-  "max_track_cycles": 3500,
+  "max_track_cycles": 4764,
   "description": "UW ROM and internal (E12) sample player with a lo-fi splice time-stretch, same engine as SMP-ST: SMPL 1..48 are UW ROM slots, E1..E21 the internal samples; TIME slows the playback (0 normal, 42 half, 127 frozen) at unchanged pitch, PTCH +-32 semitones, DEC decay (127 = none), GRAN grain length, FLUX random jitter; END before STRT plays in reverse"
 }

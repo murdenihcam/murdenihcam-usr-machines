@@ -72,7 +72,7 @@ FINAL = {
                     "value_text": E_LABELS(1)},
                    "Internal E12 (E1..E21) "),
 }
-VERSIONS = {"rom_e12_trslicer_tg": "0.2", "rom_e12_slicer": "0.5", "rom_slicer": "0.5", "e12_slicer": "0.5"}
+VERSIONS = {"rom_e12_trslicer_tg": "0.2", "rom_e12_slicer": "0.6", "rom_slicer": "0.6", "e12_slicer": "0.6"}
 
 if __name__ == "__main__":
     for name, (mid, display, code, smpl, desc) in {**VARIANTS, **FINAL}.items():

@@ -26,3 +26,5 @@ An experimental granulator machine for the Elektron Machinedrum, compatible with
 **GRAN (grain size):** Length of each grain, from about 3 ms to 740 ms; 64 is about 46 ms. Each grain fades in and out linearly over roughly its first and last quarter.
 
 **SPRY (spray):** Random variation in where each grain starts, around the SEEK/SCAN position. It reaches the whole sample at maximum. Above 64, grains also have a growing chance of playing backwards, up to 50% at 127.
+
+**TRACKS / CPU (v0.6):** certified with the MDS 1.1 certifier (MDX 2.0C). Measured worst case per track, the same for SMP-GR, SMP-GM and SMP-G2: MKII 5,298 cycles, MKI 5,962 (5,255 with the program in SRAM). All 16 tracks need 3,000 (MKII) / 3,073 (MKI) or less, so with a granulator on every track plan on about **9 tracks on an MKII** and **8 on an MKI** (about 9 with the program in SRAM). Lighter machines on the other tracks leave room for more. These counts are estimates from the certified figures; the firmware does the actual budgeting.

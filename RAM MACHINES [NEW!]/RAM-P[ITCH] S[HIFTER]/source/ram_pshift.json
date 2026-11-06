@@ -1,0 +1,123 @@
+{
+  "schema": "spsx.mds.machine/1",
+  "abi_version": 1,
+  "id": "org.murdenihcam.ram-pitch",
+  "display_name": "RAM PITCH",
+  "machine_version": "0.2",
+  "category": "RAM",
+  "short_label": "PS",
+  "params": [
+    {
+      "name": "PTCH",
+      "default": 96,
+      "transform": "raw14",
+      "control": "bipolar"
+    },
+    {
+      "name": "PTC2",
+      "default": 64,
+      "transform": "raw14",
+      "control": "bipolar",
+      "value_text": [
+        {
+          "value": 64,
+          "text": "OFF"
+        }
+      ]
+    },
+    {
+      "name": "ENTI",
+      "default": 64,
+      "transform": "raw14",
+      "control": "bipolar"
+    },
+    {
+      "name": "FB",
+      "default": 0,
+      "transform": "unipolar_q23",
+      "control": "continuous"
+    },
+    {
+      "name": "DLAY",
+      "default": 0,
+      "transform": "unipolar_q23",
+      "control": "continuous"
+    },
+    {
+      "name": "MODE",
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "transform": "boolean",
+      "control": "switch",
+      "value_text": [
+        {
+          "value": 0,
+          "text": "REC"
+        },
+        {
+          "value": 1,
+          "text": "HOLD"
+        }
+      ]
+    },
+    {
+      "name": "WIN",
+      "default": 40,
+      "transform": "raw14",
+      "control": "continuous"
+    },
+    {
+      "name": "SCAT",
+      "default": 0,
+      "transform": "unipolar_q23",
+      "control": "continuous"
+    }
+  ],
+  "program": {
+    "y_workset_words": 41,
+    "relocations": [
+      "TABLE_BASE"
+    ],
+    "imports": [
+      {
+        "symbol": "WORKSPACE",
+        "abi_symbol": 11
+      },
+      {
+        "symbol": "MAIN_POS",
+        "abi_symbol": 5
+      },
+      {
+        "symbol": "MAIN_RING",
+        "abi_symbol": 4
+      },
+      {
+        "symbol": "POSITIONS",
+        "abi_symbol": 7
+      },
+      {
+        "symbol": "ACC_X2",
+        "abi_symbol": 7
+      },
+      {
+        "symbol": "ACC_X3",
+        "abi_symbol": 7
+      },
+      {
+        "symbol": "POSITIONS2",
+        "abi_symbol": 8
+      },
+      {
+        "symbol": "POSITIONS3",
+        "abi_symbol": 8
+      },
+      {
+        "symbol": "ACC_X",
+        "abi_symbol": 7
+      }
+    ]
+  },
+  "max_track_cycles": 3000,
+  "description": "two-voice pitch shifter on the main output, recorded into the first free RAM slot (R1-R4); its own output comes back through the main output, so it spirals with the track level: PTCH and PTC2 +-24 semitones (64 = off for PTC2), ENTI pitch swoop on trig, FB feedback, WIN window 12..370 ms, SCAT random scatter of each head's jump, DLAY predelay, MODE HOLD stops recording (a pitched freeze)"
+}

@@ -20,3 +20,12 @@ A transient-detecting sample slicer and looper for the Machinedrum, compatible w
 **SLIC** - Number of slices across the whole sample. Takes effect at the next trig.
 
 **SLNO** - Which slice plays. Values above SLIC wrap round (for example SLNO 10 with 8 slices plays slice 2). Takes effect at the next trig.
+
+**tracks per model** (v0.6, certified with mds-certifier for MDX 2.0C / MDS 1.1)
+How many tracks one slicer can run on when it is the only USR machine in the kit. Other machines in the kit use part of the same DSP budget, so mixing lowers these numbers.
+
+| Machine | MKII | MKI | MKI (program in SRAM) |
+|---|---|---|---|
+| SMP-SL | 7 tracks (6,043 cycles) | 7 tracks (6,769 cycles) | 8 tracks (6,057 cycles) |
+| SMP-SM | 7 tracks (6,043 cycles) | 7 tracks (6,740 cycles) | 8 tracks (6,042 cycles) |
+| SMP-SN | 7 tracks (6,024 cycles) | 7 tracks (6,713 cycles) | 8 tracks (6,029 cycles) |

@@ -1,0 +1,122 @@
+{
+  "schema": "spsx.mds.machine/1",
+  "abi_version": 1,
+  "id": "org.murdenihcam.ram-granular",
+  "display_name": "RAM GRANULAR",
+  "machine_version": "0.3",
+  "category": "RAM",
+  "short_label": "GR",
+  "params": [
+    {
+      "name": "PTCH",
+      "default": 64,
+      "transform": "raw14",
+      "control": "bipolar"
+    },
+    {
+      "name": "MODE",
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "transform": "boolean",
+      "control": "switch",
+      "value_text": [
+        {
+          "value": 0,
+          "text": "REC"
+        },
+        {
+          "value": 1,
+          "text": "HOLD"
+        }
+      ]
+    },
+    {
+      "name": "DEC",
+      "default": 127,
+      "transform": "raw14",
+      "control": "continuous"
+    },
+    {
+      "name": "DENS",
+      "default": 64,
+      "transform": "raw14",
+      "control": "continuous"
+    },
+    {
+      "name": "SEEK",
+      "default": 0,
+      "transform": "unipolar_q23"
+    },
+    {
+      "name": "SCAN",
+      "default": 0,
+      "transform": "raw14",
+      "control": "bipolar",
+      "value_text": [
+        {
+          "value": 0,
+          "text": "LIVE"
+        }
+      ]
+    },
+    {
+      "name": "GRAN",
+      "default": 64,
+      "transform": "unipolar_square_q23",
+      "control": "continuous"
+    },
+    {
+      "name": "SPRY",
+      "default": 0,
+      "transform": "unipolar_q23",
+      "control": "continuous"
+    }
+  ],
+  "program": {
+    "y_workset_words": 64,
+    "relocations": [
+      "TABLE_BASE"
+    ],
+    "imports": [
+      {
+        "symbol": "WORKSPACE",
+        "abi_symbol": 11
+      },
+      {
+        "symbol": "MAIN_POS",
+        "abi_symbol": 5
+      },
+      {
+        "symbol": "MAIN_RING",
+        "abi_symbol": 4
+      },
+      {
+        "symbol": "ACC_X",
+        "abi_symbol": 7
+      },
+      {
+        "symbol": "ACC_X3",
+        "abi_symbol": 7
+      },
+      {
+        "symbol": "POSITIONS",
+        "abi_symbol": 8
+      },
+      {
+        "symbol": "READS",
+        "abi_symbol": 8
+      },
+      {
+        "symbol": "ACC_X2",
+        "abi_symbol": 7
+      },
+      {
+        "symbol": "TRIG_INFO",
+        "abi_symbol": 13
+      }
+    ]
+  },
+  "max_track_cycles": 3000,
+  "description": "granular freeze on the main output, recorded all the time into the first free RAM slot (R1-R4): a trig freezes the whole buffer and up to 3 grains play it as on SMP-GR (DENS overlap, SEEK start, SCAN playhead speed 64 = still, GRAN length, SPRY random position and reverse); MODE HOLD stops recording and keeps the buffer; SCAN 0 = LIVE (granular delay, no freeze); a retrig repeat keeps the frozen audio"
+}

@@ -1,0 +1,85 @@
+{
+  "schema": "spsx.mds.machine/1",
+  "abi_version": 1,
+  "id": "org.murdenihcam.ram-stretch",
+  "display_name": "RAM STRETCH",
+  "machine_version": "0.4",
+  "category": "RAM",
+  "short_label": "ST",
+  "params": [
+    {
+      "name": "PTCH",
+      "default": 64,
+      "transform": "raw14",
+      "control": "bipolar"
+    },
+    {
+      "name": "MODE",
+      "default": 63,
+      "min": 63,
+      "max": 65,
+      "transform": "raw14",
+      "control": "bipolar",
+      "value_text": [
+        {"value": 63, "text": "REC"},
+        {"value": 64, "text": "HOLD"},
+        {"value": 65, "text": "MREC"}
+      ]
+    },
+    {
+      "name": "DEC",
+      "default": 127,
+      "transform": "raw14",
+      "control": "continuous"
+    },
+    {
+      "name": "TIME",
+      "default": 0,
+      "transform": "raw14",
+      "control": "continuous"
+    },
+    {
+      "name": "STRT",
+      "default": 0,
+      "transform": "unipolar_q23"
+    },
+    {
+      "name": "END",
+      "default": 127,
+      "transform": "unipolar_q23"
+    },
+    {
+      "name": "GRAN",
+      "default": 64,
+      "transform": "unipolar_square_q23",
+      "control": "continuous"
+    },
+    {
+      "name": "FLUX",
+      "default": 0,
+      "transform": "unipolar_q23",
+      "control": "continuous"
+    }
+  ],
+  "program": {
+    "y_workset_words": 64,
+    "relocations": [
+      "TABLE_BASE"
+    ],
+    "imports": [
+      {"symbol": "TRIG_INFO", "abi_symbol": 13},
+      {"symbol": "WORKSPACE", "abi_symbol": 11},
+      {"symbol": "MAIN_POS", "abi_symbol": 5},
+      {"symbol": "MAIN_RING", "abi_symbol": 4},
+      {"symbol": "INPUT_X", "abi_symbol": 7},
+      {"symbol": "RW_X", "abi_symbol": 7},
+      {"symbol": "PCM_A", "abi_symbol": 7},
+      {"symbol": "PCM_B", "abi_symbol": 7},
+      {"symbol": "POSITIONS", "abi_symbol": 8},
+      {"symbol": "RREAD_Y", "abi_symbol": 8},
+      {"symbol": "RREAD_X", "abi_symbol": 7}
+    ]
+  },
+  "max_track_cycles": 3000,
+  "description": "continuous RAM recorder with the SMP-ST splice time-stretch: records the main output into the first free RAM slot it finds (R1-R4) all the time; MODE REC / HOLD (stops recording, keeps the buffer) / MREC (records with its own output muted); a trig plays the whole buffer (44.1 kHz) through PTCH/DEC/TIME/STRT/END/GRAN/FLUX as on SMP-ST"
+}

@@ -289,12 +289,14 @@ NBAL2_ADDR:
         clr     a
         move    y:(r6+T_K),y0
         move    y:(r2)+n2,x0
-        rep     #8
+        rep     #7
         mac     x0,y0,a y:(r2)+n2,x0
+        mac     x0,y0,a                 ; no prefetch past the buffer's end
         move    y:(r6+T_N2),y0
         move    y:(r3)+n3,x0
-        rep     #8
+        rep     #7
         mac     x0,y0,a y:(r3)+n3,x0
+        mac     x0,y0,a                 ; no prefetch past the buffer's end
         asr     #12,a,a                 ; the mean / 512
         move    x:(r6+X_DC),b
         add     b,a
@@ -873,7 +875,7 @@ SLOPE_ADDR:
         move    x0,a
         abs     a
         move    y:(r6+T_B),x0
-        and     #$fe,ccr
+        add     #0,a                    ; clears C for div (andi is forbidden by MDS 1.1)
         rep     #24
         div     x0,a                    ; A0 = |slope| / 64 / (span / 1024), Q23
         move    a0,x0

@@ -27,6 +27,13 @@ if not exist %NAME%.cld (echo Assembling did not produce %NAME%.cld - see the me
 rem The machine sprite (MACHINE MGR splash): NAME.pbm, 32x24 ASCII P1, when present
 set BMP=
 if exist %NAME%.pbm set BMP=--bitmap %NAME%.pbm
+rem MDS 1.1: with MDS_TOOLS set (the built mds-tools checkout), pack with its tools and certify (takes minutes)
+if not "%MDS_TOOLS%"=="" goto CERTIFY
 python "%MDS_REPO%\tools\mds_pack.py" %NAME%.json %NAME%.cld --dsp-tools "%DSP56300_TOOLS%" %CYC% %BMP% -o %NAME%.mds || exit /b 1
 python "%MDS_REPO%\tools\mds_to_syx.py" %NAME%.mds --slot %SLOT% -o %NAME%.syx || exit /b 1
+goto DONE
+:CERTIFY
+python "%MDS_TOOLS%\tools\mds_pack.py" %NAME%.json %NAME%.cld --dsp-tools "%DSP56300_TOOLS%" %CYC% %BMP% --certify --certifier "%MDS_TOOLS%\build\Release\mds-certifier.exe" --report %NAME%_cert.json -o %NAME%.mds || exit /b 1
+python "%MDS_TOOLS%\tools\mds_to_syx.py" %NAME%.mds --slot %SLOT% -o %NAME%.syx || exit /b 1
+:DONE
 echo Done: %NAME%.syx

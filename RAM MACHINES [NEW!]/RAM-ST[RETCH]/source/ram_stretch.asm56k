@@ -1,0 +1,835 @@
+; RAM-ST "RAM STRETCH": a continuous recorder and the SMP-ST splice time-stretch
+; in one machine. Every block, the main output (as RAM-R records it, mono)
+; goes into a ring in a RAM slot's memory, lent by RAM_WORKSPACE. A TRIG takes
+; the buffer as its take and plays it through the SMP-ST engine (PTCH, DEC,
+; TIME, STRT, END, GRAN, FLUX as on SMP-ST). In REC, recording never stops: a
+; slowed or frozen take that the ring laps is overwritten by new audio.
+;
+; RAM slot: found by the machine. It starts at the track number mod 4 and, while
+; RAM_WORKSPACE lends it nothing (the slot holds a recording, another track
+; holds it, or the unit has no such slot, as R3/R4 on MKI), it tries the next
+; slot in the next block. A holder calls every block, so it keeps its slot.
+;
+; Ring: the largest power of two, 2^18 down to 2^14 words, that fits aligned in
+; the lent memory; one frame per word. A new ring is cleared CHUNK words a
+; block, silent meanwhile. Addresses are base | (offset & mask) in the ALU (no
+; modulo registers: they stop at 2^15).
+;
+; MODE: REC records all the time; HOLD stops recording and keeps the buffer;
+; MREC records like REC with this machine's output muted, so that it does not
+; record itself through the main mix (a muted voice ends).
+; In HOLD a take is the whole buffer, the last FILL frames (at most CAP = ring
+; size - MARGIN: about 1.4 s with a 64K-word slot, 5.9 s with 256K); in REC at
+; most half the ring (0.74 s / 3 s), so a slowed take is not overwritten at once.
+; Always 44.1 kHz.
+
+; TRIG: a retrig repeat (TRIGGER_INFO bit 16) keeps the previous take while the
+; ring has not overwritten it; any other trigger takes a new one.
+;
+; Parameters, Y:(r6+1..8):
+;   1 PTCH  raw14 bipolar  (setting - 64) / 2 semitones: -32..+32
+;   2 MODE  raw14 bipolar  63 REC, 64 HOLD (centre), 65 MREC (REC with the output muted)
+;   3 DEC   raw14          decay, 60 dB in 0.03..30 s; 127 = no decay
+;   4 TIME  raw14          playhead slow-down: 0 normal, 42 half, 127 frozen
+;   5 STRT  unipolar Q23   start as a fraction of the take; 127 = its end
+;   6 END   unipolar Q23   end as a fraction; 127 = whole take; before STRT = reverse
+;   7 GRAN  squared Q23    grain length 300 + 4776*s output samples
+;   8 FLUX  unipolar Q23   jitter: position up to +-0.75 grain, length +-37.5%
+;
+; Y state: 9 scratch (frames captured this block). 10..50 as in SMP-ST
+; (22 = RAM slot). 51 ring base (0 = none)  52 ring mask (size - 1)  53 words
+; cleared  54 write offset  55 valid frames (FILL)  56 frames written since the
+; take was latched  57..59 unused  60 take's first frame (ring offset)  61 CAP
+; 62 take length (frames)  63 unused.
+
+P_PTCH  equ 1
+P_MODE  equ 2
+P_DEC   equ 3
+P_TIME  equ 4
+P_STRT  equ 5
+P_END   equ 6
+P_GRAN  equ 7
+P_FLUX  equ 8
+T_SCR   equ 9
+S_ACT   equ 10
+S_GI    equ 11
+S_GF    equ 12
+S_PI    equ 13
+S_PF    equ 14
+S_LO    equ 15
+S_HI    equ 16
+S_WIN   equ 17
+S_STEP  equ 18
+S_CNT   equ 19
+S_GAIN  equ 20
+S_SEED  equ 21
+S_SLOT  equ 22
+S_REV   equ 23
+S_MIR   equ 24
+S_ENV   equ 25
+S_REL   equ 26
+S_FADE  equ 27
+S_OGI   equ 28
+S_OGF   equ 29
+T_RGI   equ 30
+T_RGF   equ 31
+T_RQ    equ 32
+T_F     equ 33
+T_OCT   equ 34
+T_VBI   equ 35
+T_VBF   equ 36
+T_RPQ   equ 37
+T_G0    equ 38
+T_G1    equ 39
+T_CO0   equ 40
+T_COS   equ 41
+T_CN0   equ 42
+T_CNS   equ 43
+T_K     equ 44
+T_GRAN  equ 45
+T_L64   equ 46
+T_J     equ 47
+T_CTR   equ 48
+T_R2I   equ 49
+T_R2F   equ 50
+S_RB    equ 51
+S_RM    equ 52
+S_CLR   equ 53
+S_W     equ 54
+S_FILL  equ 55
+S_SINCE equ 56
+S_D     equ 57
+S_PH    equ 58
+S_LP    equ 59
+S_WOFF  equ 60
+S_CAP   equ 61
+S_LEN   equ 62
+S_LFR   equ 63
+
+MIN_WIN equ 64                  ; shortest STRT..END window in frames
+ENV_OFF equ $000040             ; envelope level treated as silent (about -100 dB)
+SEED0   equ $2a5b3d             ; random seed of track 0
+RING_MAX equ $40000             ; largest ring, 2^18 words
+RING_MIN equ $4000               ; ... down to 2^14
+MODE_LO equ 8192-64              ; MODE settings 63 REC, 64 HOLD, 65 MREC (raw14)
+MODE_HI equ 8192+64
+CHUNK   equ 256                 ; ring words cleared a block
+MARGIN  equ 2048                ; ring frames kept free of the take
+
+        section RAM_STRETCH
+INIT:
+        movec   #>$ffffff,m6
+        clr     a
+        move    a,y:(r6+S_ACT)
+        move    a,y:(r6+S_GAIN)
+        move    a,y:(r6+S_CNT)
+        move    a,y:(r6+S_REL)
+        move    a,y:(r6+S_FADE)
+        move    a,y:(r6+S_RB)
+        move    a,y:(r6+S_RM)
+        move    a,y:(r6+S_FILL)
+        move    a,y:(r6+S_SINCE)
+        move    a,y:(r6+S_CAP)
+        move    a,y:(r6+S_LEN)
+        move    a,y:(r6+S_LFR)
+        move    r1,a            ; a different random sequence on every track
+        move    #>SEED0,x0
+        add     x0,a
+        move    a1,y:(r6+S_SEED)
+        move    r1,a            ; RAM slot: track number mod 4
+        and     #>3,a
+        move    a1,y:(r6+S_SLOT)
+        rts
+
+TRIG:
+        movec   #>$ffffff,m6
+TRIG_INFO:
+        move    x:>$000000,a    ; kind 1 / TRIGGER_INFO
+        move    y:(r6+S_RB),b
+        tst     b
+        beq     TRIG_EMPTY      ; no ring
+        move    #>$010000,x0
+        and     x0,a
+        beq     TRIG_LATCH      ; not a repeat
+        ; a repeat: keep the take while the ring has not overwritten it
+        move    y:(r6+S_LEN),a
+        move    #>MIN_WIN,x0
+        cmp     x0,a
+        blt     TRIG_LATCH
+        move    y:(r6+S_SINCE),x0
+        add     x0,a
+        move    y:(r6+S_CAP),x0
+        cmp     x0,a
+        ble     TRIG_WINDOW
+TRIG_LATCH:
+        bsr     IS_HOLD
+        move    y:(r6+S_FILL),a ; HOLD: the whole buffer, the last FILL frames
+        beq     TRIG_TAKE
+        move    y:(r6+S_RM),b   ; REC: at most half the ring, so that recording
+        asr     b               ; leaves a slowed take time before it laps it
+        move    b1,x0
+        cmp     x0,a
+        tfr     x0,a    ifgt
+TRIG_TAKE:
+        move    a1,y:(r6+S_LEN)
+        move    a1,x0
+        move    y:(r6+S_W),a
+        sub     x0,a
+        move    y:(r6+S_RM),x0
+        and     x0,a
+        move    a1,y:(r6+S_WOFF)
+        clr     a
+        move    a,y:(r6+S_SINCE)
+        move    #>$010000,x0    ; one frame per output sample
+        move    x0,y:(r6+S_STEP)
+TRIG_WINDOW:
+        move    y:(r6+S_LEN),a
+        tst     a
+        beq     TRIG_EMPTY
+        move    a1,x0           ; length
+        move    y:(r6+P_STRT),y0
+        bsr     FRAME_AT
+        move    b1,y:(r6+S_LO)  ; start frame
+        move    y:(r6+P_END),y0
+        bsr     FRAME_AT
+        move    b1,y:(r6+S_HI)  ; end frame
+        move    y:(r6+S_LO),y1
+        clr     a               ; forwards ...
+        cmp     y1,b
+        bge     TRIG_DIR
+        move    b1,y:(r6+S_LO)  ; ... unless END is before STRT: the window
+        move    y1,y:(r6+S_HI)  ; is END..STRT, played from its top down
+        move    #>1,a
+TRIG_DIR:
+        move    a1,y:(r6+S_REV)
+        move    y:(r6+S_LO),y1
+        move    y1,y:(r6+S_GI)
+        move    y1,y:(r6+S_PI)
+        move    y:(r6+S_HI),b
+        add     y1,b
+        sub     #1,b
+        move    b1,y:(r6+S_MIR)
+        move    y:(r6+S_HI),b
+        sub     y1,b
+        move    b1,y:(r6+S_WIN)
+        move    #>MIN_WIN,y1
+        cmp     y1,b
+        blt     TRIG_EMPTY      ; STRT and END too close together
+        clr     a
+        move    a,y:(r6+S_GF)
+        move    a,y:(r6+S_PF)
+        move    a,y:(r6+S_REL)
+        move    a,y:(r6+S_FADE)
+        bsr     GRAN_LEN
+        move    a1,y:(r6+S_CNT) ; the first grain has no length jitter
+        move    #>$7fffff,a
+        move    a,y:(r6+S_ENV)
+        move    a,y:(r6+S_GAIN)
+        move    #>1,a
+        move    a,y:(r6+S_ACT)
+        rts
+TRIG_EMPTY:
+        clr     a
+        move    a,y:(r6+S_ACT)
+        rts
+
+; B1 = floor(length X0 * fraction Y0), or the whole length at setting 127. Keeps X0.
+FRAME_AT:
+        mpy     x0,y0,b
+        move    b1,b
+        move    #>$7f0000,y1
+        move    y0,a
+        cmp     y1,a
+        tfr     x0,b    ifge
+        rts
+
+RENDER:
+        movec   #>$ffffff,m6
+        include 'ram_ring.inc'
+
+RING_RESET:
+        clr     a
+        move    a,y:(r6+S_W)
+        move    a,y:(r6+S_FILL)
+        move    a,y:(r6+S_LEN)
+        move    a,y:(r6+S_ACT)
+        rts
+RING_LOST:
+        clr     a
+        move    a,y:(r6+S_LEN)
+        rts
+
+RING_READY:
+        ; ---- MODE HOLD keeps the ring: no capture, takes come from what is there ----
+        bsr     IS_HOLD
+        beq     R_PLAY
+
+        ; ---- capture the main output, mono, into temporary X ----
+MAIN_POS:
+        move    x:>$000000,a    ; kind 1 / main-output position: this block's 32 pairs
+MAIN_RING:
+        move    #>$000000,x0    ; kind 1 / the 256-word main-output ring
+        sub     x0,a            ; the block's offset in the ring (as MAIN REC)
+        and     #>$ff,a
+        add     x0,a
+        move    a1,r5
+INPUT_X:
+        move    #>$000000,r3    ; kind 3 / TEMP_X
+        dor     #32,R_MONO_END
+        move    x:(r5)+,a
+        move    x:(r5)+,x0
+        add     x0,a
+        asr     a               ; (left + right) / 2
+        move    a,x:(r3)+
+R_MONO_END:
+        move    #>32,a
+R_STORE:
+        bsr     RING_WRITE
+        bra     R_PLAY
+
+; Append A1 frames (1..32) from temporary X at the write offset, wrapping at
+; the ring's end; advance the write offset, FILL and SINCE (both at most CAP).
+RING_WRITE:
+        move    a1,y:(r6+T_SCR)
+RW_X:
+        move    #>$000000,r3    ; kind 3 / TEMP_X
+        move    y:(r6+S_RM),a
+        add     #1,a
+        move    y:(r6+S_W),x0
+        sub     x0,a            ; room before the end of the ring
+        move    y:(r6+T_SCR),x0
+        cmp     x0,a
+        tfr     x0,a    ifgt
+        move    a1,x1           ; first part
+        move    y:(r6+S_RB),b
+        move    y:(r6+S_W),y0
+        add     y0,b
+        move    b1,r1
+        dor     x1,RW1_END
+        move    x:(r3)+,x0
+        move    x0,y:(r1)+
+RW1_END:
+        move    y:(r6+T_SCR),a
+        sub     x1,a
+        ble     RW_DONE
+        move    y:(r6+S_RB),r1  ; the rest from the start of the ring
+        move    a1,x1
+        dor     x1,RW2_END
+        move    x:(r3)+,x0
+        move    x0,y:(r1)+
+RW2_END:
+RW_DONE:
+        move    y:(r6+T_SCR),x0
+        move    y:(r6+S_W),a
+        add     x0,a
+        move    y:(r6+S_RM),x1
+        and     x1,a
+        move    a1,y:(r6+S_W)
+        move    y:(r6+S_CAP),x1
+        move    y:(r6+S_FILL),a
+        add     x0,a
+        cmp     x1,a
+        tfr     x1,a    ifgt
+        move    a1,y:(r6+S_FILL)
+        move    y:(r6+S_SINCE),a
+        add     x0,a
+        cmp     x1,a
+        tfr     x1,a    ifgt
+        move    a1,y:(r6+S_SINCE)
+        rts
+
+R_PLAY:
+        move    y:(r6+P_MODE),a ; MREC: recording with this machine muted
+        move    #>MODE_HI,x0
+        cmp     x0,a
+        bgt     SILENCE
+        move    y:(r6+S_ACT),a
+        tst     a
+        beq     SILENCE
+        bsr     TBASE
+        ; Rates are recomputed outside crossfades only: a crossfade (the costliest
+        ; block, two grain reads) keeps the rates its splice was computed with.
+        move    y:(r6+S_FADE),a
+        tst     a
+        bne     R_RATES_DONE
+
+        ; ---- grain rate = step * 2^(PTCH/12): semitone table plus octave shift ----
+        move    y:(r6+P_PTCH),a
+        move    #>8192,x0       ; setting 64 = no shift
+        sub     x0,a
+        asr     a               ; half a semitone per setting step
+        move    #>4095,x0
+        cmp     x0,a
+        tfr     x0,a    ifgt
+        move    #>$fff000,x0    ; -4096
+        cmp     x0,a
+        tfr     x0,a    iflt
+        tfr     a,b
+        asr     #7,b,b          ; whole semitones s, -32..31
+        and     #>$7f,a         ; 1/128-semitone steps ...
+        lsl     #16,a           ; ... as a Q23 fraction
+        move    a1,y:(r6+T_F)
+        move    #>72,x0
+        add     x0,b            ; t = s + 72, 8..135
+        move    b1,x1
+        move    #>$0aaaab,y0    ; 1/12, rounded up
+        mpy     x1,y0,a         ; A1 = t / 12, the octave + 6
+        move    a1,y:(r6+T_OCT)
+        move    a1,a
+        asl     #2,a,a
+        move    a1,y1
+        asl     #1,a,a
+        add     y1,a            ; 12 * octave
+        move    x1,b
+        sub     a,b             ; semitone within the octave, 0..11
+        move    b1,n4
+        lua     (r4)+n4,r0
+        movem   p:(r0)+,x0      ; 2^(n/12)/4
+        movem   p:(r0),x1       ; one semitone higher
+        move    x1,b
+        sub     x0,b
+        move    b1,y1
+        move    y:(r6+T_F),y0
+        mpy     y0,y1,b
+        add     x0,b
+        move    y:(r6+S_STEP),x0
+        move    b1,y0
+        mpy     x0,y0,a         ; A1:A0 = step * 2^(n/12) / 4 * 2^40
+        move    y:(r6+T_OCT),x0
+        move    #>20,b
+        sub     x0,b
+        move    b1,x0
+        asr     x0,a,a          ; shift by 20 - (octave + 6): 24.24 frames/sample
+        move    a1,y:(r6+T_RGI)
+        move    a0,y:(r6+T_RGF)
+        tfr     a,b
+        asl     #17,b,b
+        move    b1,y:(r6+T_RQ)
+
+        ; ---- playhead step per block = 32 * step * speed / 8192, with speed
+        ; from the TIME table: 8192 at 0 (normal), 4096 at 42, 0 at 127 ----
+        move    y:(r6+P_TIME),a
+        asr     #7,a,a
+        move    #>127,x0
+        cmp     x0,a
+        tfr     x0,a    ifgt
+        move    #0,x0
+        cmp     x0,a
+        tfr     x0,a    iflt
+        move    #>TB_SPEED,x0
+        add     x0,a
+        move    a1,n4
+        lua     (r4)+n4,r0
+        movem   p:(r0),y0
+        move    y:(r6+S_STEP),x0
+        mpy     x0,y0,a
+        asr     a
+        move    a1,y:(r6+T_VBI)
+        move    a0,y:(r6+T_VBF)
+        asl     #12,a,a
+        move    a1,y:(r6+T_RPQ) ; playhead rate per sample * 2^17
+R_RATES_DONE:
+
+        ; ---- end fade: starts when the playhead reaches hi ----
+        move    y:(r6+S_REL),a
+        tst     a
+        bne     R_REL_STEP
+        move    y:(r6+S_HI),y1
+        move    y:(r6+S_PI),a
+        cmp     y1,a
+        blt     R_REL_DONE
+        clr     a
+R_REL_STEP:
+        move    #>1,x0
+        add     x0,a
+        move    a1,y:(r6+S_REL)
+R_REL_DONE:
+
+        ; ---- level: decay envelope times the end fade ----
+        move    y:(r6+P_DEC),a
+        asr     #7,a,a
+        move    #>127,x0
+        cmp     x0,a
+        tfr     x0,a    ifgt
+        move    #0,x0
+        cmp     x0,a
+        tfr     x0,a    iflt
+        move    #>TB_DECAY,x0
+        add     x0,a
+        move    a1,n4
+        lua     (r4)+n4,r0
+        movem   p:(r0),y0
+        move    y:(r6+S_ENV),x0
+        mpy     x0,y0,a         ; envelope at the end of this block ...
+        move    #>$7fffff,x1
+        move    y0,b
+        cmp     x1,b
+        tfr     x0,a    ifeq    ; ... held exactly at DEC 127
+        move    a1,y:(r6+S_ENV)
+        move    #>ENV_OFF,x1
+        cmp     x1,a
+        bge     R_ENV_OK
+        clr     b               ; decayed away: this is the last block
+        move    b,y:(r6+S_ACT)
+R_ENV_OK:
+        move    a1,x0
+        move    y:(r6+S_REL),a
+        move    #>TB_QTR,y1
+        add     y1,a
+        move    a1,n4
+        lua     (r4)+n4,r0
+        movem   p:(r0),y0
+        mpy     x0,y0,a
+        move    a1,y:(r6+T_G1)
+        move    y:(r6+S_GAIN),x1
+        move    x1,y:(r6+T_G0)
+        move    a1,y:(r6+S_GAIN)
+        move    y:(r6+S_REL),a
+        move    #>4,x0
+        cmp     x0,a
+        blt     R_REL_OK
+        clr     b               ; end fade complete: stop after this block
+        move    b,y:(r6+S_ACT)
+R_REL_OK:
+
+R_COEF:
+        ; ---- per-grain gain ramps for this block ----
+        move    y:(r6+S_FADE),a
+        tst     a
+        beq     R_COEF_PLAIN
+        ; crossfade step j = FADE - 1: old grain G * (1 - j/4), new grain G * j/4
+        move    #>TB_QTR-1,x0
+        add     x0,a
+        move    a1,n4
+        lua     (r4)+n4,r0
+        movem   p:(r0)+,y0
+        movem   p:(r0),y1
+        move    y:(r6+T_G0),x0
+        move    y:(r6+T_G1),x1
+        bsr     COEF
+        move    b1,y:(r6+T_CO0)
+        move    a1,y:(r6+T_COS)
+        move    y:(r6+S_FADE),x0
+        move    #>TB_QTR+5,a
+        sub     x0,a
+        move    a1,n4
+        lua     (r4)+n4,r0
+        movem   p:(r0)-,y0
+        movem   p:(r0),y1
+        move    y:(r6+T_G0),x0
+        move    y:(r6+T_G1),x1
+        bsr     COEF
+        bra     R_COEF_STORE
+R_COEF_PLAIN:
+        move    y:(r6+T_G0),b
+        move    y:(r6+T_G1),a
+        sub     b,a
+        asr     #5,a,a
+R_COEF_STORE:
+        move    b1,y:(r6+T_CN0)
+        move    a1,y:(r6+T_CNS)
+
+        ; ---- crossfade blocks: the old grain, 32 frames, into the output ----
+        move    y:(r6+S_FADE),a
+        tst     a
+        beq     R_NEW
+        move    y:(r6+S_OGI),a
+        move    y:(r6+S_OGF),a0
+        bsr     POSGEN
+        move    a1,y:(r6+S_OGI)
+        move    a0,y:(r6+S_OGF)
+        bsr     RREAD
+PCM_A:
+        move    #>$000000,r0    ; kind 3 / TEMP_X
+        move    y:(r6+T_CO0),b
+        move    y:(r6+T_COS),x1
+        bsr     GAIN_OUT        ; R7 is back at the block start afterwards
+
+R_NEW:
+        ; ---- the current grain, 32 frames ----
+        move    y:(r6+S_GI),a
+        move    y:(r6+S_GF),a0
+        bsr     POSGEN
+        move    a1,y:(r6+S_GI)
+        move    a0,y:(r6+S_GF)
+        move    y:(r6+S_PI),b
+        move    y:(r6+S_PF),b0
+        move    y:(r6+T_VBI),x1
+        move    y:(r6+T_VBF),x0
+        add     x,b
+        move    b1,y:(r6+S_PI)
+        move    b0,y:(r6+S_PF)
+        bsr     RREAD
+PCM_B:
+        move    #>$000000,r0    ; kind 3 / TEMP_X
+        move    y:(r6+T_CN0),b
+        move    y:(r6+T_CNS),x1
+        move    y:(r6+S_FADE),a
+        tst     a
+        bne     PCM_ADD
+        bsr     GAIN_OUT
+        ; ---- outside crossfades: splice once the grain has played GRAN samples,
+        ; or early when the grain would leave the window within 8 blocks. The
+        ; new grain starts with the next block, at the playhead's new place.
+        bsr     COUNT_GRAIN
+        ble     R_SPLICE
+        move    y:(r6+S_REL),a
+        tst     a
+        bne     R_DONE
+        move    y:(r6+T_RGI),a
+        move    y:(r6+T_RGF),a0
+        asl     #8,a,a          ; 256 * grain rate
+        move    y:(r6+S_GI),x1
+        move    y:(r6+S_GF),x0
+        add     x,a
+        move    y:(r6+S_HI),x0
+        cmp     x0,a
+        blt     R_DONE
+        clr     a               ; early splice: the next grain counts from zero
+        move    a,y:(r6+S_CNT)
+R_SPLICE:
+        bsr     SPLICE
+R_DONE:
+        rts
+PCM_ADD:
+        move    b1,y1
+        dor     #32,PCM_ADD_END
+        move    x:(r0)+,x0      y:(r7),a
+        mac     x0,y1,a
+        add     x1,b    a,y:(r7)+
+        move    b1,y1
+PCM_ADD_END:
+        move    y:(r6+S_FADE),a
+        move    #>1,x0
+        add     x0,a
+        move    #>5,x0
+        cmp     x0,a
+        blt     R_FADE_STORE
+        clr     a               ; crossfade finished
+R_FADE_STORE:
+        move    a1,y:(r6+S_FADE)
+        bsr     COUNT_GRAIN     ; the grain keeps counting through the crossfade
+        rts
+
+; Unless the voice is fading out, count down one block of the grain:
+; returns with the GT condition set while there is grain left.
+COUNT_GRAIN:
+        move    y:(r6+S_REL),a
+        tst     a
+        bne     COUNT_GRAIN_END
+        move    y:(r6+S_CNT),a
+        move    #>32,x0
+        sub     x0,a
+        move    a1,y:(r6+S_CNT)
+        tst     a
+        rts
+COUNT_GRAIN_END:
+        move    #>1,a           ; fading out: no splice
+        tst     a
+        rts
+
+; Y:(R7)+ = X:(R0)+ * gain for 32 samples; the gain starts at B1 and steps by X1.
+; Software-pipelined: each store goes with the next sample's multiply.
+GAIN_OUT:
+        move    x:(r0)+,x0
+        move    b1,y1
+        add     x1,b
+        mpy     x0,y1,a x:(r0)+,x0
+        move    b1,y1
+        dor     #30,GAIN_OUT_END
+        add     x1,b
+        mpy     x0,y1,a x:(r0)+,x0      a,y:(r7)+
+        move    b1,y1
+GAIN_OUT_END:
+        mpy     x0,y1,a a,y:(r7)+
+        move    a,y:(r7)+
+        rts
+
+SILENCE:
+        clr     a
+        move    a,y:(r6+S_ACT)
+        rep     #32
+        move    a,y:(r7)+       ; every path writes the whole output block
+        rts
+
+; EQ condition set when MODE is HOLD (the centre setting, 64: 8,192 +-64).
+IS_HOLD:
+        move    y:(r6+P_MODE),a
+        move    #>MODE_LO,x0
+        cmp     x0,a
+        blt     IS_HOLD_NO
+        move    #>MODE_HI,x0
+        cmp     x0,a
+        bgt     IS_HOLD_NO
+        clr     a               ; EQ
+        rts
+IS_HOLD_NO:
+        move    #>1,a           ; NE
+        tst     a
+        rts
+
+; R4 = the constant tables (linear addressing).
+TBASE:
+TABLE_BASE:
+        move    #>TABLES,r4
+        movec   #>$ffffff,m4
+        rts
+
+; Gain ramp from X0 * Y0 to X1 * Y1 over 32 samples: B1 = start, A1 = step.
+COEF:
+        mpy     x0,y0,b
+        mpy     x1,y1,a
+        sub     b,a
+        asr     #5,a,a
+        rts
+
+; New grain. The old one keeps playing through the 4-block crossfade. The new
+; one starts at playhead + 0.75 * FLUX * U * GRAN * grain rate, moved back by half the
+; distance it gains on the playhead during the grain, so the grain is centred
+; on the playhead; then kept inside lo..hi-1. The grain after it lasts
+; GRAN * (1 + 0.375 * FLUX * U').
+SPLICE:
+        move    #>1,a
+        move    a,y:(r6+S_FADE)
+        move    y:(r6+S_GI),a
+        move    a,y:(r6+S_OGI)
+        move    y:(r6+S_GF),a
+        move    a,y:(r6+S_OGF)
+        bsr     RAND
+        move    a1,y1
+        move    y:(r6+P_FLUX),x0
+        move    #>$600000,y0    ; 0.75
+        mpy     x0,y0,a
+        move    a1,x0
+        mpy     x0,y1,a
+        move    a1,y:(r6+T_K)   ; K = 0.75 * FLUX * U
+        bsr     GRAN_LEN
+        move    a1,y:(r6+T_GRAN)
+        asl     #6,a,a
+        move    a1,y:(r6+T_L64)
+        move    a1,x0
+        move    y:(r6+T_RQ),y0
+        mpy     x0,y0,a         ; J = GRAN * grain rate, in frames
+        move    a1,y:(r6+T_J)
+        move    y:(r6+T_RPQ),y0
+        mpy     x0,y0,b         ; GRAN * playhead rate
+        move    b1,x1
+        move    y:(r6+T_J),a
+        sub     x1,a
+        asr     a
+        move    a1,y:(r6+T_CTR) ; half of what the grain gains on the playhead
+        move    y:(r6+T_J),x0
+        move    y:(r6+T_K),y0
+        mpy     x0,y0,b         ; B1 = floor(J * K)
+        move    y:(r6+S_PF),b0
+        move    y:(r6+S_PI),x0
+        add     x0,b
+        move    y:(r6+T_CTR),x0
+        sub     x0,b            ; B = playhead + offset - centring, 24.24
+        move    y:(r6+S_LO),x0
+        cmp     x0,b
+        tfr     x0,b    iflt
+        move    y:(r6+S_HI),a
+        sub     #1,a
+        move    a1,x0
+        cmp     x0,b
+        tfr     x0,b    ifgt
+        move    b1,y:(r6+S_GI)
+        move    b0,y:(r6+S_GF)
+        bsr     RAND
+        move    a1,y1
+        move    y:(r6+P_FLUX),x0
+        move    #>$300000,y0    ; 0.375
+        mpy     x0,y0,a
+        move    a1,x0
+        mpy     x0,y1,a
+        move    a1,y1
+        move    y:(r6+T_GRAN),x0
+        mpy     x0,y1,b         ; B1 = floor(GRAN * 0.375 * FLUX * U')
+        add     x0,b
+        move    y:(r6+S_CNT),x0
+        add     x0,b            ; keep the remainder: grains average GRAN samples
+        move    b1,y:(r6+S_CNT)
+        rts
+
+; A1 = GRAN in output samples, 300 + floor(4776 * squared setting); A0 = 0.
+GRAN_LEN:
+        move    y:(r6+P_GRAN),y0
+        move    #>4776,x0
+        mpy     x0,y0,a
+        move    #>300,x0
+        add     x0,a
+        move    a1,a
+        rts
+
+; A1 = next random value (signed Q23): seed = seed * $19660D + $6EF35F mod 2^24.
+RAND:
+        move    y:(r6+S_SEED),x0
+        move    #>$19660d,y0
+        mpy     x0,y0,a
+        asr     a
+        move    a0,a
+        move    #>$6ef35f,x0
+        add     x0,a
+        move    a1,y:(r6+S_SEED)
+        rts
+
+; Write the ring addresses of 32 take positions to temporary Y, from A (24.24,
+; frames from the take's start) in steps of the grain rate: base | ((first +
+; position) & mask). Returns the next position in A. In reverse the positions
+; run downwards in mirrored coordinates r = lo + hi - 1 - p, and A converts
+; back on return.
+POSGEN:
+        move    y:(r6+T_RGI),x1
+        move    y:(r6+T_RGF),x0
+        move    y:(r6+S_RM),y1
+        move    y:(r6+S_RB),y0
+POSITIONS:
+        move    #>$000000,r0    ; kind 4 / TEMP_Y
+        move    y:(r6+S_REV),b
+        tst     b
+        bne     POSGEN_REV
+        move    y:(r6+S_WOFF),b
+        add     b,a
+        dor     #32,POSGEN_END
+        tfr     a,b
+        and     y1,b
+        or      y0,b
+        add     x,a     b1,y:(r0)+
+POSGEN_END:
+        move    y:(r6+S_WOFF),b
+        sub     b,a
+        rts
+POSGEN_REV:
+        move    y:(r6+S_MIR),b
+        sub     a,b
+        move    y:(r6+S_WOFF),a
+        add     b,a
+        dor     #32,POSGEN_REV_END
+        tfr     a,b
+        and     y1,b
+        or      y0,b
+        sub     x,a     b1,y:(r0)+
+POSGEN_REV_END:
+        move    y:(r6+S_WOFF),b
+        sub     b,a
+        move    y:(r6+S_MIR),b
+        sub     a,b
+        tfr     b,a
+        rts
+
+; Read the 32 ring addresses in temporary Y into temporary X.
+RREAD:
+RREAD_Y:
+        move    #>$000000,r0    ; kind 4 / TEMP_Y
+RREAD_X:
+        move    #>$000000,r3    ; kind 3 / TEMP_X
+        dor     #32,RREAD_END
+        move    y:(r0)+,r2
+        move    y:(r2),x0
+        move    x0,x:(r3)+
+RREAD_END:
+        rts
+
+        include 'tables.inc'
+        endsec

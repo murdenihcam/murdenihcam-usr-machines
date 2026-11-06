@@ -4,9 +4,9 @@ SMP STRETCH machines for the Machinedrum (X.20 firmware, MDS user machines)
 Three versions of the same time-stretch sample machine:
 
   Folder   Shown on the MD   Plays                                    Install file      Slot
-  SMP-SR   SMP-SR            UW ROM samples 1..48                     SMP-SR_U01.syx    U01
-  SMP-S2   SMP-S2            internal (E12) samples 1..21             SMP-S2_U02.syx    U02
-  SMP-ST   SMP-ST            UW ROM 1..48, then internal E1..E21      SMP-ST_U03.syx    U03
+  SMP-SR   SMP-SR            UW ROM samples 1..48                     SMP-SR_rom.syx    U01
+  SMP-S2   SMP-S2            internal (E12) samples 1..21             SMP-S2_e12.syx    U02
+  SMP-ST   SMP-ST            UW ROM 1..48, then internal E1..E21      SMP-ST_allbanks.syx   U03
 
 The destination slot is stored inside each .syx; renaming the file does not
 change it. Sending a .syx replaces whatever is in that slot.
@@ -15,6 +15,7 @@ Each machine folder also holds:
   *.mds              the machine package the .syx was made from
   *_logo_32x24.png   the MACHINE MGR logo, exactly as packed (black = pixel on)
   *_logo_web.png     the logo at 192x144, black on #CD2824
+  certification_report.json  the MDS 1.1 certifier's report for that machine
 
 Controls (all three machines)
 -----------------------------
@@ -28,6 +29,21 @@ Controls (all three machines)
   GRAN  grain length, 300..5000 samples
   FLUX  random grain position and length (0..0.75)
 
+Tracks / CPU (v0.7, MDS 1.1 certified, MDX 2.0C)
+-------------------------------------------------
+  Certified worst case per track (MKII / MKI / MKI with program in SRAM):
+    SMP-ST  4,764 / 5,198 / 4,792 cycles
+    SMP-SR  4,769 / 5,198 / 4,794 cycles
+    SMP-S2  4,766 / 5,198 / 4,794 cycles
+  With the machine on every track (the kit shares 16 x 3,000 cycles on MKII,
+  16 x 3,073 on MKI), all three versions run on about:
+    MKII      10 tracks
+    MKI        9 tracks
+    MKI SRAM  10 tracks
+  Lighter machines on other tracks leave room for more; the firmware does the
+  actual budgeting. v0.7 is the v0.6 program unchanged (same sound), packed
+  with its certified cycle counts.
+
 _source
 -------
 Everything needed to rebuild and re-test: the shared engine
@@ -35,3 +51,5 @@ Everything needed to rebuild and re-test: the shared engine
 the tables generator, build.cmd, the bit-exact Python model and the
 simulator tests. Build one machine from that folder in a cmd window with
 DSP56300_TOOLS and MDS_REPO set:  .\build.cmd rom_stretch 1
+The v0.7 packages were made with mds-tools' mds_pack.py --certify (github.com/jmamma/mds-tools)
+from the .cld that build.cmd assembles.

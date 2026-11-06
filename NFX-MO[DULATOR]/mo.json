@@ -3,7 +3,7 @@
   "display_name": "SPACE MOD",
   "category": "NFX",
   "short_label": "MO",
-  "machine_version": "0.10",
+  "machine_version": "0.11",
   "retrigger": "continuous",
   "neighbour": true,
   "description": "Modulated delay on the track before, wet only (blend with the track levels). MODE SPIN pitch-shifting delay (RATE: +-12 semitones, 64 = none; repeats spiral with FB), FLNG flanger, CHOR 3-tap chorus after the Monomachine (RATE = SPD 0.05-10 Hz, FB up to 0.98), DBLR doubler, BODE frequency-shifting delay (RATE: +-1 kHz; DPTH 0 ring modulation ... 127 pure shift). FB up to self-oscillation, SPRD spread, ENTI: a delay envelope fired by TRIG (right: longer then back, left: shorter then back; further = slower; 64 off), DLAY base delay, NBAL blends the track before (right) and two before (left). This build: smooth feedback saturation.",
@@ -166,5 +166,5 @@
       }
     ]
   },
-  "max_track_cycles": 3925
+  "max_track_cycles": 4381
 }

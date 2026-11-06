@@ -5,13 +5,14 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 base = json.loads((HERE / "granular.json").read_text())
-VERSION = "0.5"
-TAIL = ("up to 3 grains with smoothstep fades; DENS grains at once (full rate up to 1, then half rate, "
+VERSION = "0.6"
+TAIL = ("up to 3 grains with linear fades; DENS grains at once (full rate up to 1, then half rate, "
         "within the cycle budget), GRAN grain length, SEEK start, SCAN playhead speed (64 = still), SPRY random "
         "position and reverse chance, PTCH +-32 semitones, DEC decay (127 = none)")
 # the combined machine keeps its installed id
 next(p for p in base["params"] if p["name"] == "DEC")["default"] = 64   # mid knob, about 1 s
-base["program"].update(x_workset_words=32, y_workset_words=56, relocations=["TABLE_BASE", "TABLE_BASE2"],
+base["program"].update(x_workset_words=32, y_workset_words=57,   # Y+56: the interpolation reads one ahead
+                       relocations=["TABLE_BASE", "TABLE_BASE2"],
                        imports=[{"symbol": s, "abi_symbol": n} for s, n in   # in program order
                                 (("POS_ADDR", 8), ("READ_SAMPLES", 10), ("PCM_ADDR", 7), ("TRIG_INFO", 9))])
 base.update(display_name="ROM+E12 GRANULAR", machine_version=VERSION,

@@ -514,24 +514,26 @@ BF_ALIVE:
         movec   x0,m4
         move    r7,r2
         move    r7,r4
-        move    #32,n2
+        move    #31,n2
         bra     BF_SUM
 BF_HALF:
         asr     #4,a,a          ; half rate: 16 samples into the half-rate sum
         lua     (r6)+n6,r2
         lua     (r6)+n6,r4
-        move    #16,n2
+        move    #15,n2
 BF_SUM:
         move    a1,x1           ; gain step
         move    x:(r0)+,x0
         move    y:(r4)+,a
         move    b,y1
         add     x1,b
-        dor     n2,BF_SUM_END
+        dor     n2,BF_SUM_END   ; all samples but the last ...
         mac     x0,y1,a x:(r0)+,x0      b,y1
         add     x1,b    a,y:(r2)+
         move    y:(r4)+,a
 BF_SUM_END:
+        mac     x0,y1,a         ; ... which reads nothing ahead (the certifier
+        move    a,y:(r2)+       ; rejects reads past the temporary area)
         move    #>$ffffff,x0
         movec   x0,m2
         movec   x0,m4

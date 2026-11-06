@@ -27,6 +27,9 @@ To install my *ROM and E12* machines or the ROM-only versions, you’ll need a M
 2. SMP-ST[RETCH]
 3. SMP-GR[ANULATOR]
 4. NFX-MO[DULATOR]
+5. RAM-GR[ANULAR]
+6. RAM-PS [PITCH SHIFT]
+7. RAM-ST[RETCH]
 
 ## 1. SMP-SL[ICE]
 
@@ -62,6 +65,8 @@ There are 3 versions:
 
 **SLNO** - Which slice plays. Values above SLIC wrap round (for example SLNO 10 with 8 slices plays slice 2). Takes effect at the next trig
 
+**TRACKS / CPU (v0.6):** certified with the MDS 1.1 certifier (MDX 2.0C). Measured worst case per track: SMP-SL MKII 6,043 cycles, MKI 6,769 (6,057 with the program in SRAM); SMP-SM 6,043 / 6,740 / 6,042; SMP-SN 6,024 / 6,713 / 6,029. All 16 tracks need 3,000 (MKII) / 3,073 (MKI) or less, so with a slicer on every track plan on about **7 tracks on an MKII** and **7 on an MKI** (about 8 with the program in SRAM), for all three versions. Lighter machines on the other tracks leave room for more. These counts are estimates from the certified figures; the firmware does the actual budgeting.
+
 ---
 
 
@@ -79,6 +84,8 @@ A custom sample timestretching machine for the Elektron Machinedrum, compatible 
 
 **parameters**
 Here you get a SMPL knob for selecting the respective sample slot to address (plockable of course) -- another side benefit of this is you don't have to dig thru ROM/E12 to find your sample, a DECay, the TIME knob, which starts at no stretch and increases to infinite freeeeeeeeeeze. GRAN and FLUX are designed to work like ableton's texture warp, and unlike in Ableton, we can actually modulate these params!!! have fun sssttrrreeeetttttccccchhhhiiiiiiiiiiiinnnnnggggggggg
+
+**TRACKS / CPU (v0.7):** certified with the MDS 1.1 certifier (MDX 2.0C). Measured worst case per track: SMP-ST MKII 4,764 cycles, MKI 5,198 (4,792 with the program in SRAM); SMP-SR 4,769 / 5,198 / 4,794; SMP-S2 4,766 / 5,198 / 4,794. All 16 tracks need 3,000 (MKII) / 3,073 (MKI) or less, so with a stretcher on every track plan on about **10 tracks on an MKII** and **9 on an MKI** (about 10 with the program in SRAM), for all three versions. Lighter machines on the other tracks leave room for more. These counts are estimates from the certified figures; the firmware does the actual budgeting.
 
 ---
 
@@ -119,8 +126,10 @@ An experimental granulator machine for the Elektron Machinedrum, compatible with
 
 **SPRY (spray):** Random variation in where each grain starts, around the SEEK/SCAN position. It reaches the whole sample at maximum. Above 64, grains also have a growing chance of playing backwards, up to 50% at 127.
 
+**TRACKS / CPU (v0.6):** certified with the MDS 1.1 certifier (MDX 2.0C). Measured worst case per track, the same for SMP-GR, SMP-GM and SMP-G2: MKII 5,298 cycles, MKI 5,962 (5,255 with the program in SRAM). All 16 tracks need 3,000 (MKII) / 3,073 (MKI) or less, so with a granulator on every track plan on about **9 tracks on an MKII** and **8 on an MKI** (about 9 with the program in SRAM). Lighter machines on the other tracks leave room for more. These counts are estimates from the certified figures; the firmware does the actual budgeting.
+
 ---
-## 3. NFX-MO[DULATOR]
+## 4. NFX-MO[DULATOR]
 
 <img width="431.5" height="196" alt="nfx-mo" src="https://github.com/user-attachments/assets/40ac44f0-23ee-4f05-8573-e42ddc7eb9a7" />\
 
@@ -153,3 +162,88 @@ A multi-mode modulation effect, covering flanger, chorus, pitch and frequency sh
 **DLAY -** Delay time, range dependent on mode (0.5–12 ms in CHOR).
 
 **NBAL -** Input blend. Fully right = only the track just before, fully left = only two tracks before, centre = both. An empty neighbour track is ignored, so it can’t leak noise into the effect.
+
+**TRACKS / CPU (v0.11):** certified with the MDS 1.1 certifier (MDX 2.0C). Measured worst case per track: MKII 4,381 cycles, MKI 5,942 (5,220 with the program in SRAM). All 16 tracks need 3,000 (MKII) / 3,073 (MKI) or less, so with NFX-MO on every track plan on about **10 tracks on an MKII** and **8 on an MKI** (about 9 with the program in SRAM). Lighter machines on the other tracks leave room for more. These counts are estimates from the certified figures; the firmware does the actual budgeting.
+
+---
+## 5. RAM-GR[ANULAR]
+
+<img width="96" height="72" alt="RAM-GR_web" src="RAM%20MACHINES/RAM-GR%5BANULATOR%5D/RAM-GR_web.png" />
+
+**what it is**
+Granulation of live audio — can be a granular delay or a player of held RAM audio. By default it is a granular delay (LIVE): the grains read just behind the recording, so the cloud follows the music. Turn SCAN up from 0 and a trig freezes the buffer instead, with up to 3 grains playing it.
+
+**parameters**\
+**PTCH** - grain pitch, ±32 semitones.
+
+**MODE** - REC records all the time; HOLD stops recording and keeps the buffer.
+
+**DEC** - fade after a trig, 127 = none.
+
+**DENS** - grain overlap, 0.5 to 3 (up to 3 grains).
+
+**SEEK** - where the playhead starts in the frozen buffer; in LIVE, how far behind the recording the grains read.
+
+**SCAN** - 0 = LIVE (default). Above 0: playhead speed through the frozen buffer, -2x to +2x, 64 = still.
+
+**GRAN** - grain length, 3-116 ms.
+
+**SPRY** - random grain position and reverse chance.
+
+**NOTE:** the slot is used as two halves: a trig freezes one and recording moves to the other, so every trig freezes fresh audio; retrig repeats keep the frozen audio. In HOLD a trig freezes what was recorded before the hold.
+
+**TRACKS / CPU (v0.3):** MKII 4,454 cycles, MKI 4,912 (4,148 with the program in SRAM): **10 tracks on an MKII**, **10 on an MKI** (11 with SRAM).
+
+---
+## 6. RAM-PS [PITCH SHIFT]
+
+<img width="96" height="72" alt="RAM-PS_web" src="RAM%20MACHINES/RAM-P%5BITCH%5D%20S%5BHIFTER%5D/RAM-PS_web.png" />
+
+**what it is**
+A two-voice pitch shifter. Its own output is part of the main output it records, so the shifted sound comes back and is shifted again: a spiral whose depth follows the track's level, on top of FB.
+
+**parameters**\
+**PTCH** - voice 1, ±24 semitones (default an octave up).
+
+**PTC2** - voice 2 likewise; 64 = off.
+
+**ENTI** - a pitch swoop fired by trigs, up to ±12 semitones, settling in about 0.5 s; 64 = off.
+
+**FB** - the shifted sound back into the buffer (shimmer).
+
+**DLAY** - predelay, up to 200 ms.
+
+**MODE** - REC records all the time; HOLD stops recording, so the last window keeps playing (a pitched freeze).
+
+**WIN** - window, 12 ms (smooth, buzzy) to 370 ms (smeared, grainy).
+
+**SCAT** - each read head lands up to a window further back at random when it jumps: grainy, scattered shifts.
+
+**TRACKS / CPU (v0.2):** MKII 5,232 cycles, MKI 5,507 (4,890 with the program in SRAM): **9 tracks on an MKII**, **8 on an MKI** (10 with SRAM).
+
+---
+## 7. RAM-ST[RETCH]
+
+<img width="96" height="72" alt="RAM-ST_web" src="RAM%20MACHINES/RAM-ST%5BRETCH%5D/RAM-ST_web.png" />
+
+**what it is**
+The SMP-ST splice time-stretch on recorded audio: a trig plays the buffer through PTCH/DEC/TIME/STRT/END/GRAN/FLUX as on SMP-ST.
+
+**parameters**\
+**PTCH** - ±32 semitones, half a semitone per step.
+
+**MODE** - 3 steps. Left REC (default): records all the time. Centre HOLD: stops recording and keeps the buffer. Right MREC: records with RAM-ST's own output muted (no spillover).
+
+**DEC** - decay, 127 = hold.
+
+**TIME** - playhead speed: 0 normal, 42 half, 127 frozen (pitch unchanged).
+
+**STRT / END** - the window in the take; END before STRT plays it reversed.
+
+**GRAN** - grain length (300-5000 samples).
+
+**FLUX** - random grain position/length jitter.
+
+**NOTE:** HOLD plays the whole buffer; REC plays the newest half, so a slowed take has time before new recording reaches it. Retrig repeats replay the same take; other trigs take a new one.
+
+**TRACKS / CPU (v0.4):** MKII 3,362 cycles, MKI 3,919 (3,158 with the program in SRAM): up to **14 tracks on an MKII**, **12 on an MKI** (15 with SRAM).

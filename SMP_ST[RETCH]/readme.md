@@ -10,6 +10,8 @@ I wanted to make an homage to the Ableton texture warp mode: that gritty, Akai S
 **parameters**
 Here you get a SMPL knob for selecting the respective sample slot to address (plockable of course) -- another side benefit of this is you don't have to dig thru ROM/E12 to find your sample, a DECay, the TIME knob, which starts at no stretch and increases to infinite freeeeeeeeeeze. GRAN and FLUX are designed to work like ableton's texture warp, and unlike in Ableton, we can actually modulate these params!!! have fun sssttrrreeeetttttccccchhhhiiiiiiiiiiiinnnnnggggggggg 
 
+**TRACKS / CPU (v0.7):** certified with the MDS 1.1 certifier (MDX 2.0C). Measured worst case per track: SMP-ST MKII 4,764 cycles, MKI 5,198 (4,792 with the program in SRAM); SMP-SR 4,769 / 5,198 / 4,794; SMP-S2 4,766 / 5,198 / 4,794. All 16 tracks need 3,000 (MKII) / 3,073 (MKI) or less, so with a stretcher on every track plan on about **10 tracks on an MKII** and **9 on an MKI** (about 10 with the program in SRAM), for all three versions. Lighter machines on the other tracks leave room for more. These counts are estimates from the certified figures; the firmware does the actual budgeting.
+
 **how to install (applies to any USR machine)**:
 requirements: As I understand it, you can use **any** MD updated to [X.20B firmware available here](https://github.com/jmamma/MDX) to install machines from the folder of machines provided by MDX that comes in the firmware ZIP. This is also true of my 'SMP-S2', which works on your internal E12 samples.
 To install my *ROM and E12* machine (SMP-ST) or the ROM-only version, you’ll need a Machinedrum UW (MKI or II, + or not) on X.20B.

@@ -3,7 +3,7 @@
   "display_name": "ROM+E12 GRANULAR",
   "category": "SMP",
   "short_label": "GR",
-  "machine_version": "0.5",
+  "machine_version": "0.6",
   "params": [
     {
       "name": "PTCH",
@@ -142,7 +142,7 @@
   ],
   "program": {
     "x_workset_words": 32,
-    "y_workset_words": 56,
+    "y_workset_words": 57,
     "relocations": [
       "TABLE_BASE",
       "TABLE_BASE2"
@@ -167,5 +167,5 @@
     ]
   },
   "max_track_cycles": 3900,
-  "description": "Granular player for UW ROM (SMPL 1..48) and internal E1..E21 samples: up to 3 grains with smoothstep fades; DENS grains at once (full rate up to 1, then half rate, within the cycle budget), GRAN grain length, SEEK start, SCAN playhead speed (64 = still), SPRY random position and reverse chance, PTCH +-32 semitones, DEC decay (127 = none)"
+  "description": "Granular player for UW ROM (SMPL 1..48) and internal E1..E21 samples: up to 3 grains with linear fades; DENS grains at once (full rate up to 1, then half rate, within the cycle budget), GRAN grain length, SEEK start, SCAN playhead speed (64 = still), SPRY random position and reverse chance, PTCH +-32 semitones, DEC decay (127 = none)"
 }
