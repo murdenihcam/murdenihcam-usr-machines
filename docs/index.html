@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>murdenihcam USR machines</title>
+  <meta name="description" content="Custom USR machines for the Elektron Machinedrum on the MDX X.20 firmware, focused on sample mangling and effects processing.">
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="canonical" href="https://murdenihcam.github.io/murdenihcam-usr-machines/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="murdenihcam USR machines">
+  <meta property="og:description" content="Custom USR machines for the Elektron Machinedrum on the MDX X.20 firmware, focused on sample mangling and effects processing.">
+  <meta property="og:url" content="https://murdenihcam.github.io/murdenihcam-usr-machines/">
+  <meta property="og:image" content="https://murdenihcam.github.io/murdenihcam-usr-machines/assets/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Silkscreen&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-head">
+    <h1 class="wordmark"><img src="assets/wordmark.svg" width="672" height="132" alt="murdenihcam USR machines"></h1>
+    <p class="lede">Custom USR machines for the Elektron Machinedrum on the <a href="https://github.com/jmamma/MDX">MDX X.20 firmware</a>, focused on sample mangling and effects processing.</p>
+    <p class="lede lede-ask">Let me know how you get on with these and if you have any suggestions!</p>
+    <p class="lede lede-talk">Discussion: <a href="https://www.elektronauts.com/t/custom-usr-machines-for-x-20/257233">Custom USR Machines for X.20</a> on Elektronauts,
+      and the <b class="nowrap">mdx-usr-machines</b> thread on the <a href="https://discord.gg/H2wVG6eH2">MDX Discord</a>.</p>
+
+    <section class="install" aria-labelledby="install-h">
+      <h2 id="install-h">How to install</h2>
+      <ol>
+        <li>Update your MD to <a href="https://github.com/jmamma/MDX">MDX X.20</a>. Back up first; third-party machines are installed at your own risk.</li>
+        <li>On the MD: <b>FUNC+GLOBAL &rarr; FILE &rarr; MACHINE MGR</b>, pick an empty slot, choose <b>RECV</b> (it shows WAITING&hellip;).</li>
+        <li>Send the <code>.syx</code> with SysEx Librarian or your SysEx app of choice. Several files can go at once; they fill empty slots.</li>
+        <li>The new machines show up under <b>KIT &rarr; EDIT</b>.</li>
+      </ol>
+      <p class="note">Versions that read <b>all banks</b> or the <b>UW ROM bank</b> need a Machinedrum UW. <b>E12 bank</b> versions and the NFX effect work on all models.</p>
+    </section>
+
+    <section class="terms" aria-label="Disclaimer and licence">
+      <p><b>Disclaimer:</b> Back up your Machinedrum (sounds, kits, patterns) before installing anything, firmware updates included. These machines are tested and run smoothly on a UW+ MKII, but you download and use them at your own risk; they come as they are, with no guarantee. Made with LLM help for the coding; not affiliated with MDX development.</p>
+      <p><b>Licence:</b> The USR machines are free to use in your own music, commercial releases included. Please don't sell, bundle or re-host these files without asking first; link to <a href="https://github.com/murdenihcam/murdenihcam-usr-machines">my GitHub</a> instead. The demo samples are not licensed for your use.</p>
+    </section>
+  </header>
+
+  <main id="machines" class="machines" aria-label="Machines"></main>
+
+  <noscript><p class="nojs">This page lists the machines with JavaScript. The .syx files are in the <a href="downloads/">downloads</a> folder.</p></noscript>
+
+  <footer class="site-foot">
+    <p><a href="https://github.com/murdenihcam/murdenihcam-usr-machines">murdenihcam USR machines GitHub repo</a></p>
+  </footer>
+
+  <script src="assets/logos32.js"></script>
+  <script src="machines.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -2,6 +2,7 @@
 
 
 This is a repository containing all of the USR machines that I have released for the [MDX X20 firmware](https://github.com/jmamma/MDX). 
+- Website: [murdenihcam.github.io/murdenihcam-usr-machines](https://murdenihcam.github.io/murdenihcam-usr-machines/) (all machines with screens, parameter notes, demos and downloads)
 - Discussion thread here: [Custom USR Machines for X.20](https://www.elektronauts.com/t/custom-usr-machines-for-x-20/257233). 
 - Here's an MD/MnM community discord that I use to discuss this (see diy-machines) https://discord.gg/HNtQsSmkf
 ---
@@ -168,7 +169,7 @@ A multi-mode modulation effect, covering flanger, chorus, pitch and frequency sh
 ---
 ## 5. RAM-GR[ANULATOR]
 
-<img width="96" height="72" alt="RAM-GR_web" src="RAM%20MACHINES/RAM-GR%5BANULATOR%5D/RAM-GR_web.png" />
+<img width="96" height="72" alt="RAM-GR_web" src="RAM%20MACHINES%20%5BNEW%21%5D/RAM-GR%5BANULATOR%5D/RAM-GR_web.png" />
 
 **what it is**
 Granulation of live audio — can be a granular delay or a player of held RAM audio. By default it is a granular delay (LIVE): the grains read just behind the recording, so the cloud follows the music. Turn SCAN up from 0 and a trig freezes the buffer instead, with up to 3 grains playing it.
@@ -197,7 +198,7 @@ Granulation of live audio — can be a granular delay or a player of held RAM au
 ---
 ## 6. RAM-P[ITCH] S[HIFTER]
 
-<img width="96" height="72" alt="RAM-PS_web" src="RAM%20MACHINES/RAM-P%5BITCH%5D%20S%5BHIFTER%5D/RAM-PS_web.png" />
+<img width="96" height="72" alt="RAM-PS_web" src="RAM%20MACHINES%20%5BNEW%21%5D/RAM-P%5BITCH%5D%20S%5BHIFTER%5D/RAM-PS_web.png" />
 
 **what it is**
 A two-voice pitch shifter. Its own output is part of the main output it records, so the shifted sound comes back and is shifted again: a spiral whose depth follows the track's level, on top of FB.
@@ -224,7 +225,7 @@ A two-voice pitch shifter. Its own output is part of the main output it records,
 ---
 ## 7. RAM-ST[RETCH]
 
-<img width="96" height="72" alt="RAM-ST_web" src="RAM%20MACHINES/RAM-ST%5BRETCH%5D/RAM-ST_web.png" />
+<img width="96" height="72" alt="RAM-ST_web" src="RAM%20MACHINES%20%5BNEW%21%5D/RAM-ST%5BRETCH%5D/RAM-ST_web.png" />
 
 **what it is**
 The SMP-ST splice time-stretch on recorded audio: a trig plays the buffer through PTCH/DEC/TIME/STRT/END/GRAN/FLUX as on SMP-ST.
