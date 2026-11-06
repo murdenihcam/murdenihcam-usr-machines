@@ -166,7 +166,7 @@ A multi-mode modulation effect, covering flanger, chorus, pitch and frequency sh
 **TRACKS / CPU (v0.11):** certified with the MDS 1.1 certifier (MDX 2.0C). Measured worst case per track: MKII 4,381 cycles, MKI 5,942 (5,220 with the program in SRAM). All 16 tracks need 3,000 (MKII) / 3,073 (MKI) or less, so with NFX-MO on every track plan on about **10 tracks on an MKII** and **8 on an MKI** (about 9 with the program in SRAM). Lighter machines on the other tracks leave room for more. These counts are estimates from the certified figures; the firmware does the actual budgeting.
 
 ---
-## 5. RAM-GR[ANULAR]
+## 5. RAM-GR[ANULATOR]
 
 <img width="96" height="72" alt="RAM-GR_web" src="RAM%20MACHINES/RAM-GR%5BANULATOR%5D/RAM-GR_web.png" />
 
@@ -195,7 +195,7 @@ Granulation of live audio — can be a granular delay or a player of held RAM au
 **TRACKS / CPU (v0.3):** MKII 4,454 cycles, MKI 4,912 (4,148 with the program in SRAM): **10 tracks on an MKII**, **10 on an MKI** (11 with SRAM).
 
 ---
-## 6. RAM-PS [PITCH SHIFT]
+## 6. RAM-P[ITCH] S[HIFTER]
 
 <img width="96" height="72" alt="RAM-PS_web" src="RAM%20MACHINES/RAM-P%5BITCH%5D%20S%5BHIFTER%5D/RAM-PS_web.png" />
 
