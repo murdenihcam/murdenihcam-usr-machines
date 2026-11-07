@@ -20,8 +20,8 @@ window.SITE_TEXT = {
   "ramTitle": "RAM machines",
   "ramSub": "Record and playback live audio into RAM in one machine. nUW world soundz",
   "nfxTitle": "NFX effects",
-  "nfxSub": "Effects that process the two tracks before them.",
-  "tracksCaption": "An estimated max number of tracks of this machine can run in one kit, estimated from its certified DSP cycles. ",
+  "nfxSub": "Effects that process the tracks before them.",
+  "tracksCaption": "The max number of tracks of this machine can run in one kit, estimated from its certified DSP cycles. ",
   "ramTracksCaption": "RAM machines use one of the MD's RAM slots, so a pattern can play at most 4 of them on an MKII (R1–R4) and 2 on an MKI (R1–R2), or a mix of 4 RAM machines.",
   "ramDspLine": ""
 };
