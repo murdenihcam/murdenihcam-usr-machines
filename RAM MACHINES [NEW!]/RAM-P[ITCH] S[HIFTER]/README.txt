@@ -1,6 +1,6 @@
 RAM-PS "RAM PITCH" v0.2 - two-voice pitch shifter on the main output, mono, as RAM-R records it (first free RAM slot R1-R4)
 Certified: MKII 5,232 / MKI 5,507 / MKI SRAM 4,890 cycles per track.
-Tracks it can run on alone (kit budget 16 x 3,000 MKII, 16 x 3,073 MKI): MKII 9, MKI 8, MKI with SRAM 10. Mixed kits: the sum of all tracks' cycles must stay within the budget.
+Tracks it can run on alone (kit budget 16 x 3,000 MKII, 16 x 3,073 MKI): MKII 9, MKI 8, MKI with SRAM 10. But only 4 RAM machines can play per pattern on an MKII (R1-R4) and 2 on an MKI (R1-R2), shared with RAM-R and the other RAM machines. Mixed kits: the sum of all tracks' cycles must stay within the budget.
 
 Knob  Name  Range                          Default  What it does
  1    PTCH  -24..+24 semitones (3/8 steps)  96     Voice 1 interval (96 = an octave up)

@@ -220,16 +220,19 @@
 
     var tw = el("div", "tracks-wrap");
     tw.appendChild(el("h4", "sub", "Tracks"));
-    tw.appendChild(el("p", "tracks-cap", "How many tracks of this machine one kit can run when it is on every track, estimated from its certified DSP cycles. Lighter machines on the other tracks leave room for more; the firmware does the budgeting."));
+    var ram = m.category === "RAM";
+    tw.appendChild(el("p", "tracks-cap", ram
+      ? "RAM machines need one of the MD's RAM slots, so a pattern can play at most 4 of them on an MKII (R1–R4) and 2 on an MKI (R1–R2), shared with RAM-R and the other RAM machines."
+      : "How many tracks of this machine one kit can run when it is on every track, estimated from its certified DSP cycles. Lighter machines on the other tracks leave room for more; the firmware does the budgeting."));
     var tr = el("dl", "tracks");
-    [["MKII", m.tracks.mk2, null], ["MKI", m.tracks.mk1, m.tracks.sram]].forEach(function (r) {
+    [["MKII", ram ? "4" : m.tracks.mk2], ["MKI", ram ? "2" : m.tracks.mk1]].forEach(function (r) {
       var d = el("div");
       d.appendChild(el("dt", null, r[0]));
-      var dd = el("dd", null, r[1] + " tracks");
-      d.appendChild(dd);
+      d.appendChild(el("dd", null, r[1] + (ram ? " per pattern" : " tracks")));
       tr.appendChild(d);
     });
     tw.appendChild(tr);
+    if (ram) tw.appendChild(el("p", "tracks-cap", "DSP alone would allow " + m.tracks.mk2 + " (MKII) / " + m.tracks.mk1 + " (MKI)."));
     c.appendChild(tw);
 
     c.appendChild(el("h4", "sub", m.variants.length > 1 ? "Versions by sample bank" : "Download"));

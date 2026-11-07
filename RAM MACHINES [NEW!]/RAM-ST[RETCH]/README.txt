@@ -4,7 +4,9 @@ Records the main output (mono, as RAM-R does) into a RAM slot; a trig plays the
 buffer through the SMP-ST splice time-stretch. MODE switches between recording
 (REC), keeping what is there (HOLD) and recording with RAM-ST muted (MREC).
 
-Tracks per model (certified cycles per track; the firmware sums every track in the kit)
+Tracks per model (certified cycles per track; the firmware sums every track in the kit).
+  The DSP figures below are not the real limit: RAM slots allow only 4 RAM machines
+  per pattern on MKII and 2 on MKI (see the next lines).
   MKII            3,362 cycles  -> up to 14 tracks of RAM-ST alone (16 needs <= 3,000)
   MKI, DRAM       3,919 cycles  -> up to 12 tracks alone (16 needs <= 3,073)
   MKI, SRAM       3,158 cycles  -> up to 15 tracks alone

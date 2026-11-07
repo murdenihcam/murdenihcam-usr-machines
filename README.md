@@ -193,7 +193,7 @@ Granulation of live audio — can be a granular delay or a player of held RAM au
 
 **NOTE:** the slot is used as two halves: a trig freezes one and recording moves to the other, so every trig freezes fresh audio; retrig repeats keep the frozen audio. In HOLD a trig freezes what was recorded before the hold.
 
-**TRACKS / CPU (v0.3):** MKII 4,454 cycles, MKI 4,912 (4,148 with the program in SRAM): **10 tracks on an MKII**, **10 on an MKI** (11 with SRAM).
+**TRACKS / CPU (v0.3):** MKII 4,454 cycles, MKI 4,912 (4,148 with the program in SRAM): **10 tracks on an MKII**, **10 on an MKI** (11 with SRAM). RAM slots are the real limit, though: only 4 RAM machines can play per pattern on an MKII (R1–R4) and 2 on an MKI (R1–R2), shared with RAM-R and the other RAM machines.
 
 ---
 ## 6. RAM-P[ITCH] S[HIFTER]
@@ -220,7 +220,7 @@ A two-voice pitch shifter. Its own output is part of the main output it records,
 
 **SCAT** - each read head lands up to a window further back at random when it jumps: grainy, scattered shifts.
 
-**TRACKS / CPU (v0.2):** MKII 5,232 cycles, MKI 5,507 (4,890 with the program in SRAM): **9 tracks on an MKII**, **8 on an MKI** (10 with SRAM).
+**TRACKS / CPU (v0.2):** MKII 5,232 cycles, MKI 5,507 (4,890 with the program in SRAM): **9 tracks on an MKII**, **8 on an MKI** (10 with SRAM). RAM slots are the real limit, though: only 4 RAM machines can play per pattern on an MKII (R1–R4) and 2 on an MKI (R1–R2), shared with RAM-R and the other RAM machines.
 
 ---
 ## 7. RAM-ST[RETCH]
@@ -247,4 +247,4 @@ The SMP-ST splice time-stretch on recorded audio: a trig plays the buffer throug
 
 **NOTE:** HOLD plays the whole buffer; REC plays the newest half, so a slowed take has time before new recording reaches it. Retrig repeats replay the same take; other trigs take a new one.
 
-**TRACKS / CPU (v0.4):** MKII 3,362 cycles, MKI 3,919 (3,158 with the program in SRAM): up to **14 tracks on an MKII**, **12 on an MKI** (15 with SRAM).
+**TRACKS / CPU (v0.4):** MKII 3,362 cycles, MKI 3,919 (3,158 with the program in SRAM): up to **14 tracks on an MKII**, **12 on an MKI** (15 with SRAM). RAM slots are the real limit, though: only 4 RAM machines can play per pattern on an MKII (R1–R4) and 2 on an MKI (R1–R2), shared with RAM-R and the other RAM machines.

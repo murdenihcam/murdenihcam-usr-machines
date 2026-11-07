@@ -1,6 +1,6 @@
 RAM-GR "RAM GRANULAR" v0.3 - SMP-GR's knobs on the main output, mono, as RAM-R records it (first free RAM slot R1-R4)
 Certified: MKII 4,454 / MKI 4,912 / MKI SRAM 4,148 cycles per track.
-Tracks it can run on alone (kit budget 16 x 3,000 MKII, 16 x 3,073 MKI): MKII 10, MKI 10, MKI with SRAM 11. Mixed kits: the sum of all tracks' cycles must stay within the budget.
+Tracks it can run on alone (kit budget 16 x 3,000 MKII, 16 x 3,073 MKI): MKII 10, MKI 10, MKI with SRAM 11. But only 4 RAM machines can play per pattern on an MKII (R1-R4) and 2 on an MKI (R1-R2), shared with RAM-R and the other RAM machines. Mixed kits: the sum of all tracks' cycles must stay within the budget.
 
 Knob  Name  Range                         Default  What it does
  1    PTCH  -32..+32 semitones (1/2 steps)  64     Grain pitch
