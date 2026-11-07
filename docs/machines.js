@@ -210,7 +210,7 @@ window.MACHINES = [
     "version": "0.3",
     "category": "RAM",
     "lcdName": "RAM GRANULAR",
-    "desc": "Granulation of live audio. By default it is acts like a granular delay -- very insane sounds here.",
+    "desc": "Granulation of live audio. By default it acts like a granular delay -- very insane sounds here.",
     "params": [
       ["PTCH", 64, null, 0, 127, "Grain pitch, ±32 semitones."],
       ["MODE", 0, ["REC", "HOLD"], 0, 1, "REC records all the time; HOLD stops recording and keeps the buffer."],
