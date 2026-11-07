@@ -116,7 +116,7 @@ window.MACHINES = [
     "version": "0.6",
     "category": "SMP",
     "lcdName": "ROM+E12 GRANULAR",
-    "desc": "An experimental lofi granulator for manipulating ROM and E12 samples. Who needs more than 3 grains?!?! Opens up a lot of tonal possibilities. ",
+    "desc": "An experimental lofi granulator for manipulating ROM and E12 samples. Who needs more than 3 grains?!?! Opens up a lot of textural possibilities. ",
     "demo": {
       "file": "audio/SMP-GR-demo.wav",
       "label": "SMP-GR demo"
