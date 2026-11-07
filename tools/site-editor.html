@@ -86,7 +86,7 @@
   var LABELS = {
     tagline: "Tagline (under the wordmark)", ask: "Feedback line", discussion: "Discussion line",
     installTitle: "How to install: heading", installSteps: "How to install: steps", installNote: "How to install: note",
-    disclaimer: "Disclaimer", licence: "Licence", footer: "Footer",
+    disclaimer: "Disclaimer", licence: "License", footer: "Footer",
     samplersTitle: "Samplers: section title", samplersSub: "Samplers: section subtitle",
     ramTitle: "RAM machines: section title", ramSub: "RAM machines: section subtitle",
     nfxTitle: "NFX effects: section title", nfxSub: "NFX effects: section subtitle",
@@ -169,7 +169,7 @@
     var T = state.data.siteText;
 
     var site = document.createElement("details"); site.open = true;
-    site.innerHTML = "<summary>Site text <small>header, install, disclaimer, licence, captions</small></summary>";
+    site.innerHTML = "<summary>Site text <small>header, install, disclaimer, license, captions</small></summary>";
     var sf = document.createElement("div"); sf.className = "fields";
     Object.keys(T).forEach(function (k) {
       if (Array.isArray(T[k])) {

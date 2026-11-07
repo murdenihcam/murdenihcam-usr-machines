@@ -13,7 +13,7 @@ window.SITE_TEXT = {
   ],
   "installNote": "",
   "disclaimer": "<b>Disclaimer:</b> Again, be sure to back up your Machinedrum (sounds, kits, patterns) before installing anything, firmware updates included. These machines are tested and run smoothly on a UW+ MKII, but you download and use them at your own risk; they come as they are, with no guarantee. Made with LLM help for the coding; not affiliated with MDX development.",
-  "licence": "<b>Licence:</b> The USR machines are free to use in your own music, commercial releases included. Please don't sell, bundle or re-host these files without asking first; link to <a href=\"https://github.com/murdenihcam/murdenihcam-usr-machines\">my GitHub</a> instead. The demo samples are not licensed for your use.",
+  "licence": "<b>License:</b> The USR machines (source code and .syx files) are free software under the <a href=\"https://www.gnu.org/licenses/gpl-3.0.html\">GNU General Public License v3.0 or later</a>: use them in your music (commercial releases included), share and modify them, as long as anything you pass on stays under the same license with its source. The demo samples are not covered. Source on <a href=\"https://github.com/murdenihcam/murdenihcam-usr-machines\">my GitHub</a>.",
   "footer": "<a href=\"https://github.com/murdenihcam/murdenihcam-usr-machines\">murdenihcam USR machines GitHub repo</a>",
   "samplersTitle": "Samplers",
   "samplersSub": "Playback and manipulation of samples in the UW ROM and/or E12 banks.",
