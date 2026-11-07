@@ -144,7 +144,7 @@ window.MACHINES = [
     ],
     tracks: { mk2: "10", mk1: "10", sram: "11" },
     variants: [
-      { id: "RAM-GR", scope: "Records live audio to RAM", compat: null, file: "downloads/RAM-GR/RAM-GR_U11.syx", logo: "assets/logos/RAM-GR.png" }
+      { id: "RAM-GR", scope: "Records live audio to RAM", compat: "UW only", file: "downloads/RAM-GR/RAM-GR_U11.syx", logo: "assets/logos/RAM-GR.png" }
     ]
   },
   {
@@ -170,7 +170,7 @@ window.MACHINES = [
     ],
     tracks: { mk2: "9", mk1: "8", sram: "10" },
     variants: [
-      { id: "RAM-PS", scope: "Records live audio to RAM", compat: null, file: "downloads/RAM-PS/RAM-PS_U04.syx", logo: "assets/logos/RAM-PS.png" }
+      { id: "RAM-PS", scope: "Records live audio to RAM", compat: "UW only", file: "downloads/RAM-PS/RAM-PS_U04.syx", logo: "assets/logos/RAM-PS.png" }
     ]
   },
   {
