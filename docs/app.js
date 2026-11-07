@@ -221,9 +221,7 @@
     var tw = el("div", "tracks-wrap");
     tw.appendChild(el("h4", "sub", "Tracks"));
     var ram = m.category === "RAM";
-    tw.appendChild(el("p", "tracks-cap", ram
-      ? "RAM machines need one of the MD's RAM slots, so a pattern can play at most 4 of them on an MKII (R1–R4) and 2 on an MKI (R1–R2), shared with RAM-R and the other RAM machines."
-      : "How many tracks of this machine one kit can run when it is on every track, estimated from its certified DSP cycles. Lighter machines on the other tracks leave room for more; the firmware does the budgeting."));
+    tw.appendChild(el("p", "tracks-cap", ram ? txt("ramTracksCaption") : txt("tracksCaption")));
     var tr = el("dl", "tracks");
     [["MKII", ram ? "4" : m.tracks.mk2], ["MKI", ram ? "2" : m.tracks.mk1]].forEach(function (r) {
       var d = el("div");
@@ -232,7 +230,7 @@
       tr.appendChild(d);
     });
     tw.appendChild(tr);
-    if (ram) tw.appendChild(el("p", "tracks-cap", "DSP alone would allow " + m.tracks.mk2 + " (MKII) / " + m.tracks.mk1 + " (MKI)."));
+    if (ram && txt("ramDspLine")) tw.appendChild(el("p", "tracks-cap", txt("ramDspLine").replace("{mk2}", m.tracks.mk2).replace("{mk1}", m.tracks.mk1)));
     c.appendChild(tw);
 
     c.appendChild(el("h4", "sub", m.variants.length > 1 ? "Versions by sample bank" : "Download"));
@@ -262,46 +260,28 @@
     return c;
   }
 
+  // ---------- Site text (docs/site-text.js) ----------
+  function txt(key) { var t = window.SITE_TEXT || {}; return t[key] == null ? "" : String(t[key]); }
+  function fillText() {
+    Array.prototype.forEach.call(document.querySelectorAll("[data-text]"), function (n) {
+      var key = n.getAttribute("data-text"), t = (window.SITE_TEXT || {})[key];
+      if (t == null) return;
+      n.hidden = Array.isArray(t) ? !t.length : !String(t).trim();   // empty text: hide the element
+      n.innerHTML = Array.isArray(t) ? t.map(function (x) { return "<li>" + x + "</li>"; }).join("") : t;
+    });
+  }
+
   // ---------- Sections ----------
   var SECTIONS = [
-    { id: "samplers", cat: "SMP", title: "Samplers", sub: "Slice, stretch and granulate the UW ROM and E12 samples." },
-    { id: "ram", cat: "RAM", title: "RAM machines", sub: "Record live audio into RAM and play it back." },
-    { id: "nfx", cat: "NFX", title: "NFX effects", sub: "Effects that process the tracks before them." }
+    { id: "samplers", cat: "SMP", title: "samplersTitle", sub: "samplersSub" },
+    { id: "ram", cat: "RAM", title: "ramTitle", sub: "ramSub" },
+    { id: "nfx", cat: "NFX", title: "nfxTitle", sub: "nfxSub" }
   ];
-
   var root = document.getElementById("machines");
-  var machines = window.MACHINES || [];
-  var nav = el("nav", "section-nav");
-  nav.setAttribute("aria-label", "Sections");
-  root.appendChild(nav);
+  var nav = null;
 
-  SECTIONS.forEach(function (s) {
-    var list = machines.filter(function (m) { return m.category === s.cat; });
-    if (!list.length) return;
-    var a = el("a", null, s.title);
-    a.href = "#" + s.id;
-    a.appendChild(el("span", "count", String(list.length)));
-    nav.appendChild(a);
-
-    var sec = el("section", "machine-section");
-    sec.id = s.id;
-    sec.setAttribute("aria-labelledby", s.id + "-h");
-    var h = el("h2", "section-head", s.title);
-    h.id = s.id + "-h";
-    sec.appendChild(h);
-    sec.appendChild(el("p", "section-sub", s.sub));
-    var grid = el("div", "grid");
-    list.forEach(function (m) { grid.appendChild(card(m)); });
-    sec.appendChild(grid);
-    root.appendChild(sec);
-  });
-
-  // Category filter: choosing a section shows only that section; "All" shows everything.
-  var allLink = el("a", "is-active", "All");
-  allLink.href = "#all";
-  allLink.appendChild(el("span", "count", String(machines.length)));
-  nav.insertBefore(allLink, nav.firstChild);
   function applyFilter(id) {
+    if (!nav) return;
     var shown = SECTIONS.some(function (s) { return s.id === id; }) ? id : "all";
     SECTIONS.forEach(function (s) {
       var sec = document.getElementById(s.id);
@@ -314,20 +294,70 @@
     });
     fitScreens();
   }
-  nav.addEventListener("click", function (e) {
-    var a = e.target.closest("a");
-    if (!a) return;
-    e.preventDefault();
-    var id = a.getAttribute("href").slice(1);
-    var url = id === "all" ? location.pathname + location.search : "#" + id;
-    if (url !== location.pathname + location.search + location.hash) history.pushState(null, "", url);
-    applyFilter(id);
-  });
+
+  function build() {
+    var machines = window.MACHINES || [];
+    root.innerHTML = "";
+    screens.length = 0;
+    nav = el("nav", "section-nav");
+    nav.setAttribute("aria-label", "Sections");
+    root.appendChild(nav);
+    // Category filter: choosing a section shows only that section; "All" shows everything.
+    var allLink = el("a", "is-active", "All");
+    allLink.href = "#all";
+    allLink.appendChild(el("span", "count", String(machines.length)));
+    nav.appendChild(allLink);
+
+    SECTIONS.forEach(function (s) {
+      var list = machines.filter(function (m) { return m.category === s.cat; });
+      if (!list.length) return;
+      var a = el("a", null, txt(s.title));
+      a.href = "#" + s.id;
+      a.appendChild(el("span", "count", String(list.length)));
+      nav.appendChild(a);
+
+      var sec = el("section", "machine-section");
+      sec.id = s.id;
+      sec.setAttribute("aria-labelledby", s.id + "-h");
+      var h = el("h2", "section-head", txt(s.title));
+      h.id = s.id + "-h";
+      sec.appendChild(h);
+      sec.appendChild(el("p", "section-sub", txt(s.sub)));
+      var grid = el("div", "grid");
+      list.forEach(function (m) { grid.appendChild(card(m)); });
+      sec.appendChild(grid);
+      root.appendChild(sec);
+    });
+
+    nav.addEventListener("click", function (e) {
+      var a = e.target.closest("a");
+      if (!a) return;
+      e.preventDefault();
+      var id = a.getAttribute("href").slice(1);
+      var url = id === "all" ? location.pathname + location.search : "#" + id;
+      if (url !== location.pathname + location.search + location.hash) history.pushState(null, "", url);
+      applyFilter(id);
+    });
+    applyFilter(location.hash.slice(1));
+  }
+
   window.addEventListener("popstate", function () { applyFilter(location.hash.slice(1)); });
   window.addEventListener("hashchange", function () { applyFilter(location.hash.slice(1)); });
-  applyFilter(location.hash.slice(1));
-
-  fitScreens();
   window.addEventListener("resize", fitScreens);
 
+  fillText();
+  build();
+
+  // Live preview for tools/site-editor.html: only when this page is shown inside the editor's frame.
+  if (window.parent !== window) {
+    window.addEventListener("message", function (e) {
+      var d = e.data;
+      if (!d || d.type !== "site-editor-preview") return;
+      if (d.siteText) window.SITE_TEXT = d.siteText;
+      if (d.machines) window.MACHINES = d.machines;
+      fillText();
+      build();
+    });
+    window.parent.postMessage({ type: "site-editor-ready" }, "*");
+  }
 })();

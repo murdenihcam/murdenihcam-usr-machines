@@ -36,7 +36,9 @@ code { font-family: var(--mono); font-size: 1.15em; }
   width: 672px;
   max-width: 100%;
   height: auto;
-  image-rendering: pixelated;
+  aspect-ratio: 168 / 33;
+  /* red behind the SVG, so when a phone scales it by an odd amount the edge pixels never show the page through */
+  background-color: var(--lcd-red);
   box-shadow: 0 0 0 3px #000, 0 4px 10px rgba(0,0,0,0.22);
 }
 .lede { max-width: 62ch; color: var(--muted); font-size: 17px; margin: 22px 0 24px; }

@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Site editor · murdenihcam USR machines</title>
+<style>
+  :root { --red: #cd2824; --bg: #c9cbcd; --plate: rgba(255,255,255,0.45); --line: rgba(0,0,0,0.2); --muted: #3d3f42; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: #111; font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header.top { position: sticky; top: 0; z-index: 2; background: #000; color: #fff; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; }
+  header.top h1 { font-size: 15px; margin: 0 12px 0 0; letter-spacing: .02em; }
+  header.top h1 span { background: var(--red); color: #000; padding: 1px 6px; }
+  button, .filebtn { font: inherit; border: 1px solid #000; background: #fff; color: #000; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
+  button.primary { background: var(--red); }
+  button:disabled { opacity: .45; cursor: default; }
+  .filebtn input { display: none; }
+  #status { color: #ddd; font-size: 13px; margin-left: auto; }
+  .layout { display: grid; grid-template-columns: minmax(380px, 1fr) minmax(420px, 1.2fr); height: calc(100vh - 46px); }
+  .form { overflow: auto; padding: 12px 14px 60px; border-right: 2px solid #000; }
+  .preview { display: flex; flex-direction: column; }
+  .preview .bar { padding: 6px 10px; background: #e3e4e5; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+  iframe { flex: 1; width: 100%; border: 0; background: var(--bg); }
+  details { background: var(--plate); border: 1px solid var(--line); margin: 0 0 10px; }
+  summary { cursor: pointer; padding: 8px 10px; font-weight: 600; }
+  summary small { font-weight: 400; color: var(--muted); }
+  .fields { padding: 0 10px 10px; display: grid; gap: 8px; }
+  label { display: grid; gap: 3px; font-size: 12px; color: var(--muted); }
+  label b { color: #000; font-size: 12px; }
+  textarea, input[type=text] { width: 100%; font: 13px/1.4 system-ui, sans-serif; color: #000; background: #fff; border: 1px solid #888; border-radius: 2px; padding: 5px 6px; }
+  textarea { resize: vertical; min-height: 34px; }
+  .row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .param { display: grid; grid-template-columns: 46px 1fr; gap: 8px; align-items: start; }
+  .param code { font: 12px/2 ui-monospace, monospace; font-weight: 700; color: #000; }
+  .group-title { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #000; margin-top: 4px; border-top: 1px solid var(--line); padding-top: 6px; }
+  .hint { font-size: 12px; color: var(--muted); margin: 0 0 10px; }
+  .intro { max-width: 60ch; }
+  .msg { background: #fff; border: 2px solid #000; border-left: 8px solid var(--red); padding: 8px 10px; font-weight: 600; }
+  dialog { border: 2px solid #000; border-radius: 4px; max-width: 760px; width: 92vw; padding: 0; }
+  dialog h2 { margin: 0; padding: 10px 14px; background: #000; color: #fff; font-size: 15px; }
+  dialog .body { padding: 10px 14px; max-height: 60vh; overflow: auto; }
+  dialog .change { border-bottom: 1px solid var(--line); padding: 6px 0; font-size: 13px; }
+  dialog .change .path { font-weight: 600; }
+  dialog .old { color: #8a1512; text-decoration: line-through; }
+  dialog .new { color: #0b5a12; }
+  dialog .actions { display: flex; gap: 8px; justify-content: flex-end; padding: 10px 14px; border-top: 1px solid var(--line); }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; height: auto; } .preview { height: 80vh; } .form { border-right: 0; } }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1><span>murdenihcam</span> site editor</h1>
+  <button id="openDir" title="Pick the docs folder of the repo">Open docs folder</button>
+  <label class="filebtn" title="Works in every browser; saving downloads the files"><input id="openFolderInput" type="file" webkitdirectory><span>…or pick docs folder (Firefox/Safari)</span></label>
+  <label class="filebtn" title="Pick site-text.js, machines.js and index.html, together or one by one"><input id="openFiles" type="file" accept=".js,.html" multiple><span>…or pick files</span></label>
+  <button id="save" class="primary" disabled>Review &amp; save</button>
+  <span id="status">Nothing open yet.</span>
+</header>
+
+<div class="layout">
+  <div class="form" id="form">
+    <div class="intro">
+      <p><b>Open the repo's <code>docs</code> folder</b> (Chrome or Edge: “Open docs folder”). Edit any text; the preview on the right updates as you type. Then “Review &amp; save” shows every change before writing <code>site-text.js</code>, <code>machines.js</code> and the version tags in <code>index.html</code>.</p>
+      <p class="hint">Firefox/Safari: use “…or pick docs folder” and choose the <code>docs</code> folder (the browser may ask to “upload” it: nothing leaves your computer). Or use “…or pick files” and choose <code>site-text.js</code>, <code>machines.js</code> and <code>index.html</code> from <code>docs</code>, together or one at a time. Saving then downloads the changed files for you to copy back into <code>docs/</code>.</p>
+      <p id="msg" class="msg" hidden></p>
+      <p class="hint">HTML is allowed in the texts (links, &lt;b&gt;, &lt;code&gt;). Knob positions, logos and file names are not editable here.</p>
+    </div>
+  </div>
+  <div class="preview">
+    <div class="bar">Live preview of <code>../docs/index.html</code> with your unsaved edits (open this editor from the repo's <code>tools</code> folder for the preview to work).</div>
+    <iframe id="preview" src="../docs/index.html" title="Site preview"></iframe>
+  </div>
+</div>
+
+<dialog id="review">
+  <h2>Changes to save</h2>
+  <div class="body" id="reviewBody"></div>
+  <div class="actions"><button id="cancelSave">Cancel</button><button id="confirmSave" class="primary">Save</button></div>
+</dialog>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var state = { dir: null, files: {}, orig: null, data: null, headers: {} };
+  var LABELS = {
+    tagline: "Tagline (under the wordmark)", ask: "Feedback line", discussion: "Discussion line",
+    installTitle: "How to install: heading", installSteps: "How to install: steps", installNote: "How to install: note",
+    disclaimer: "Disclaimer", licence: "Licence", footer: "Footer",
+    samplersTitle: "Samplers: section title", samplersSub: "Samplers: section subtitle",
+    ramTitle: "RAM machines: section title", ramSub: "RAM machines: section subtitle",
+    nfxTitle: "NFX effects: section title", nfxSub: "NFX effects: section subtitle",
+    tracksCaption: "Tracks caption (samplers, NFX)", ramTracksCaption: "Tracks caption (RAM machines)",
+    ramDspLine: "RAM DSP line ({mk2}/{mk1} are filled in)"
+  };
+
+  // ---------- reading the data files ----------
+  function runData(text, key) {
+    var fake = {};
+    new Function("window", text)(fake);
+    return fake[key];
+  }
+  function headerOf(text, marker) { var i = text.indexOf(marker); return i > 0 ? text.slice(0, i) : ""; }
+
+  function load(files) {
+    if (!files["site-text.js"] || !files["machines.js"]) throw new Error("Need site-text.js and machines.js from the docs folder.");
+    files = Object.assign({}, files);
+    var siteText = runData(files["site-text.js"], "SITE_TEXT");
+    var machines = runData(files["machines.js"], "MACHINES");
+    state.files = files;
+    state.headers = { site: headerOf(files["site-text.js"], "window.SITE_TEXT"), machines: headerOf(files["machines.js"], "window.MACHINES") };
+    state.orig = JSON.parse(JSON.stringify({ siteText: siteText, machines: machines }));
+    state.data = { siteText: siteText, machines: machines };
+    buildForm();
+    $("save").disabled = false;
+    sendPreview();
+  }
+
+  // ---------- serialising (same layout as the files in the repo, so git diffs stay small) ----------
+  function prim(v) { return v === null || typeof v !== "object"; }
+  function flat(v) { return prim(v) || (Array.isArray(v) && v.every(prim)); }
+  function inline(v) {
+    if (Array.isArray(v)) return "[" + v.map(inline).join(", ") + "]";
+    if (v && typeof v === "object") return "{" + Object.keys(v).map(function (k) { return JSON.stringify(k) + ": " + inline(v[k]); }).join(", ") + "}";
+    return JSON.stringify(v);
+  }
+  function dump(v, ind, parentIsList) {
+    ind = ind || 0;
+    var p = "  ".repeat(ind), q = "  ".repeat(ind + 1);
+    if (Array.isArray(v)) {
+      var one = inline(v);
+      if ((parentIsList && v.every(flat)) || (v.every(prim) && one.length <= 100)) return one;
+      if (!v.length) return "[]";
+      return "[\n" + v.map(function (x) { return q + dump(x, ind + 1, true); }).join(",\n") + "\n" + p + "]";
+    }
+    if (v && typeof v === "object") {
+      var keys = Object.keys(v);
+      if (!keys.length) return "{}";
+      return "{\n" + keys.map(function (k) { return q + JSON.stringify(k) + ": " + dump(v[k], ind + 1, false); }).join(",\n") + "\n" + p + "}";
+    }
+    return JSON.stringify(v);
+  }
+  function siteTextFile() { return state.headers.site + "window.SITE_TEXT = " + dump(state.data.siteText) + ";\n"; }
+  function machinesFile() { return state.headers.machines + "window.MACHINES = " + dump(state.data.machines) + ";\n"; }
+  function bumpedIndex(text) {
+    var d = new Date(), today = d.getFullYear() + String(d.getMonth() + 1).padStart(2, "0") + String(d.getDate()).padStart(2, "0");
+    var m = /\?v=(\d{8})([a-z]?)"/.exec(text), next = today;
+    if (m && m[1] === today) next = today + (m[2] ? String.fromCharCode(m[2].charCodeAt(0) + 1) : "a");
+    return { text: text.replace(/\?v=\d{8}[a-z]?"/g, "?v=" + next + '"'), version: next };
+  }
+
+  // ---------- form ----------
+  function field(label, value, onInput, opts) {
+    opts = opts || {};
+    var l = document.createElement("label");
+    var b = document.createElement("b"); b.textContent = label; l.appendChild(b);
+    var t = document.createElement(opts.input ? "input" : "textarea");
+    if (opts.input) t.type = "text"; else t.rows = opts.rows || Math.min(6, Math.max(1, Math.ceil(String(value).length / 70)));
+    t.value = value == null ? "" : value;
+    t.addEventListener("input", function () { onInput(t.value); changed(); });
+    l.appendChild(t);
+    return l;
+  }
+  function group(title) { var d = document.createElement("div"); d.className = "group-title"; d.textContent = title; return d; }
+
+  function buildForm() {
+    var form = $("form");
+    form.querySelectorAll("details").forEach(function (d) { d.remove(); });
+    var T = state.data.siteText;
+
+    var site = document.createElement("details"); site.open = true;
+    site.innerHTML = "<summary>Site text <small>header, install, disclaimer, licence, captions</small></summary>";
+    var sf = document.createElement("div"); sf.className = "fields";
+    Object.keys(T).forEach(function (k) {
+      if (Array.isArray(T[k])) {
+        sf.appendChild(group(LABELS[k] || k));
+        T[k].forEach(function (_, i) { sf.appendChild(field((LABELS[k] || k) + " " + (i + 1), T[k][i], function (v) { T[k][i] = v; })); });
+      } else {
+        sf.appendChild(field(LABELS[k] || k, T[k], function (v) { T[k] = v; }));
+      }
+    });
+    site.appendChild(sf);
+    form.appendChild(site);
+
+    state.data.machines.forEach(function (m) {
+      var d = document.createElement("details");
+      d.innerHTML = "<summary></summary>";
+      d.querySelector("summary").textContent = m.name + " ";
+      var sm = document.createElement("small"); sm.textContent = "v" + m.version + " · " + m.category; d.querySelector("summary").appendChild(sm);
+      var f = document.createElement("div"); f.className = "fields";
+      var r = document.createElement("div"); r.className = "row";
+      r.appendChild(field("Name", m.name, function (v) { m.name = v; }, { input: true }));
+      r.appendChild(field("Version", m.version, function (v) { m.version = v; }, { input: true }));
+      r.appendChild(field("Screen title", m.lcdName, function (v) { m.lcdName = v; }, { input: true }));
+      f.appendChild(r);
+      f.appendChild(field("Description", m.desc, function (v) { m.desc = v; }));
+      if (m.demo) f.appendChild(field("Demo label", m.demo.label, function (v) { m.demo.label = v; }, { input: true }));
+
+      f.appendChild(group("Parameters"));
+      m.params.forEach(function (p) {
+        var row = document.createElement("div"); row.className = "param";
+        var c = document.createElement("code"); c.textContent = p[0]; row.appendChild(c);
+        var t = document.createElement("textarea"); t.rows = Math.min(4, Math.max(1, Math.ceil(p[5].length / 70))); t.value = p[5];
+        t.addEventListener("input", function () { p[5] = t.value; changed(); });
+        row.appendChild(t);
+        f.appendChild(row);
+      });
+
+      f.appendChild(group("Note box (one note per paragraph; leave empty for none)"));
+      f.appendChild(field("Notes", (m.aware || []).join("\n\n"), function (v) {
+        m.aware = v.split(/\n\s*\n/).map(function (s) { return s.trim(); }).filter(Boolean);
+      }, { rows: Math.max(3, (m.aware || []).length * 3) }));
+
+      f.appendChild(group("Track counts (DSP estimate)"));
+      var tr = document.createElement("div"); tr.className = "row";
+      ["mk2", "mk1", "sram"].forEach(function (k) {
+        tr.appendChild(field({ mk2: "MKII", mk1: "MKI", sram: "MKI with SRAM" }[k], m.tracks[k], function (v) { m.tracks[k] = v; }, { input: true }));
+      });
+      f.appendChild(tr);
+
+      f.appendChild(group("Download rows"));
+      m.variants.forEach(function (v) {
+        var vr = document.createElement("div"); vr.className = "row";
+        vr.appendChild(field(v.id + ": text", v.scope, function (x) { v.scope = x; }, { input: true }));
+        vr.appendChild(field(v.id + ": works on (italic)", v.compat, function (x) { v.compat = x || null; }, { input: true }));
+        var file = document.createElement("label"); file.innerHTML = "<b>File</b>"; var s = document.createElement("span"); s.textContent = v.file; file.appendChild(s);
+        vr.appendChild(file);
+        f.appendChild(vr);
+      });
+      d.appendChild(f);
+      form.appendChild(d);
+    });
+  }
+
+  // ---------- preview ----------
+  var previewTimer = null;
+  function sendPreview() {
+    if (!state.data) return;
+    var w = $("preview").contentWindow;
+    if (w) w.postMessage({ type: "site-editor-preview", siteText: state.data.siteText, machines: state.data.machines }, "*");
+  }
+  function changed() {
+    var n = diff().length;
+    $("status").textContent = n ? n + " unsaved change" + (n > 1 ? "s" : "") : "No unsaved changes.";
+    clearTimeout(previewTimer); previewTimer = setTimeout(sendPreview, 250);
+  }
+  window.addEventListener("message", function (e) {
+    if (e.data && e.data.type === "site-editor-ready") sendPreview();
+  });
+
+  // ---------- review ----------
+  function diff() {
+    var out = [];
+    (function walk(a, b, path) {
+      if (prim(a) || prim(b)) { if (a !== b) out.push({ path: path, old: a, now: b }); return; }
+      var keys = Object.keys(Object.assign({}, a, b));
+      keys.forEach(function (k) { walk(a[k], b[k], path.concat(k)); });
+    })(state.orig, state.data, []);
+    return out;
+  }
+  function pretty(path) {
+    var p = path.slice();
+    if (p[0] === "siteText") return "Site text › " + (LABELS[p[1]] || p[1]) + (p.length > 2 ? " " + (+p[2] + 1) : "");
+    var m = state.data.machines[p[1]], rest = p.slice(2);
+    if (rest[0] === "params") return m.id + " › " + m.params[rest[1]][0];
+    if (rest[0] === "aware") return m.id + " › note " + (+rest[1] + 1);
+    if (rest[0] === "variants") return m.id + " › " + m.variants[rest[1]].id + " " + rest[2];
+    return m.id + " › " + rest.join(" ");
+  }
+  function showReview() {
+    var changes = diff(), body = $("reviewBody");
+    body.innerHTML = "";
+    if (!changes.length) { body.textContent = "No changes."; }
+    changes.forEach(function (c) {
+      var d = document.createElement("div"); d.className = "change";
+      var p = document.createElement("div"); p.className = "path"; p.textContent = pretty(c.path); d.appendChild(p);
+      var o = document.createElement("div"); o.className = "old"; o.textContent = c.old == null ? "(empty)" : String(c.old); d.appendChild(o);
+      var n = document.createElement("div"); n.className = "new"; n.textContent = c.now == null ? "(empty)" : String(c.now); d.appendChild(n);
+      body.appendChild(d);
+    });
+    var note = document.createElement("p"); note.className = "hint";
+    note.textContent = state.dir ? "Writes docs/site-text.js and docs/machines.js, and bumps the ?v= version tags in docs/index.html." :
+      "Downloads site-text.js, machines.js and index.html (with bumped version tags). Copy them into the docs folder, replacing the old ones.";
+    body.appendChild(note);
+    $("confirmSave").disabled = !changes.length;
+    $("review").showModal();
+  }
+
+  // ---------- saving ----------
+  async function writeFile(name, text) {
+    if (state.dir) {
+      var h = await state.dir.getFileHandle(name, { create: false });
+      var w = await h.createWritable(); await w.write(text); await w.close();
+    } else {
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+      a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    }
+  }
+  async function save() {
+    $("review").close();
+    try {
+      var site = siteTextFile(), mach = machinesFile(), idx = state.files["index.html"] ? bumpedIndex(state.files["index.html"]) : null;
+      var touched = [];
+      if (diff().some(function (c) { return c.path[0] === "siteText"; })) { await writeFile("site-text.js", site); touched.push("site-text.js"); state.files["site-text.js"] = site; }
+      if (diff().some(function (c) { return c.path[0] === "machines"; })) { await writeFile("machines.js", mach); touched.push("machines.js"); state.files["machines.js"] = mach; }
+      if (idx) { await writeFile("index.html", idx.text); touched.push("index.html (v=" + idx.version + ")"); state.files["index.html"] = idx.text; }
+      state.orig = JSON.parse(JSON.stringify(state.data));
+      $("status").textContent = (state.dir ? "Saved: " : "Downloaded: ") + touched.join(", ") + ". Now commit and push.";
+      if (state.dir) $("preview").src = "../docs/index.html?r=" + Date.now();
+    } catch (err) {
+      $("status").textContent = "Save failed: " + err.message;
+    }
+  }
+
+  // ---------- opening ----------
+  $("openDir").addEventListener("click", async function () {
+    if (!window.showDirectoryPicker) { $("status").textContent = "This browser can't open folders; use “…or pick files”."; return; }
+    try {
+      var dir = await window.showDirectoryPicker({ id: "murdenihcam-docs", mode: "readwrite" });
+      var files = {};
+      for (var name of ["site-text.js", "machines.js", "index.html"]) {
+        try { files[name] = await (await (await dir.getFileHandle(name)).getFile()).text(); } catch (e) { /* missing */ }
+      }
+      state.dir = dir;
+      load(files);
+      $("status").textContent = "Opened " + dir.name + "/. No unsaved changes.";
+    } catch (err) { if (err.name !== "AbortError") $("status").textContent = "Could not open: " + err.message; }
+  });
+  // Files picked without folder access (Firefox, Safari): collected across picks, saving downloads them.
+  var picked = {};
+  function message(text) { var m = $("msg"); m.textContent = text; m.hidden = !text; $("status").textContent = text || $("status").textContent; }
+  async function takeFiles(list) {
+    var wanted = ["site-text.js", "machines.js", "index.html"], got = [];
+    for (var f of list) {
+      // match by name, ignoring case and copies like "machines (1).js"
+      var n = f.name.toLowerCase(), key = null;
+      if (/\.js$/.test(n) && n.indexOf("site-text") === 0) key = "site-text.js";
+      else if (/\.js$/.test(n) && n.indexOf("machines") === 0) key = "machines.js";
+      else if (/\.html?$/.test(n) && n.indexOf("index") === 0) key = "index.html";
+      if (!key) continue;
+      try { picked[key] = await f.text(); got.push(key); }
+      catch (err) { message("Could not read " + f.name + ": " + err.message); return; }
+    }
+    var missing = wanted.slice(0, 2).filter(function (n) { return !picked[n]; });
+    if (missing.length) {
+      message("Loaded: " + (Object.keys(picked).join(", ") || "nothing yet") + ". Still needed: " + missing.join(" and ") + " (from the docs folder)." + (got.length ? "" : " The file you picked isn't one of the site files."));
+      return;
+    }
+    state.dir = null;
+    try {
+      load(picked);
+      message("");
+      $("status").textContent = "Opened " + Object.keys(picked).join(", ") + ". Saving will download the changed files" + (picked["index.html"] ? "." : " (pick index.html too to bump the version tags).");
+    } catch (err) { message("Could not read the files: " + err.message); }
+  }
+  $("openFiles").addEventListener("change", function (e) { takeFiles(e.target.files); e.target.value = ""; });
+  $("openFolderInput").addEventListener("change", function (e) {
+    var top = Array.prototype.filter.call(e.target.files, function (f) { var p = f.webkitRelativePath || ""; return !p || p.split("/").length === 2; });
+    picked = {};
+    takeFiles(top);
+    e.target.value = "";
+  });
+  $("save").addEventListener("click", showReview);
+  $("cancelSave").addEventListener("click", function () { $("review").close(); });
+  $("confirmSave").addEventListener("click", save);
+  window.addEventListener("beforeunload", function (e) { if (state.data && diff().length) { e.preventDefault(); e.returnValue = ""; } });
+
+  // for testing: window.__siteEditor exposes the internals
+  window.__siteEditor = { state: state, load: load, dump: dump, diff: diff, siteTextFile: siteTextFile, machinesFile: machinesFile, bumpedIndex: bumpedIndex };
+})();
+</script>
+</body>
+</html>
